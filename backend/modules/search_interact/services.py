@@ -20,6 +20,8 @@ def toggle_like(db: Session, video_id: int, user_id: int) -> LikeToggleResponse:
     if existing_like:
         # Unlike
         db.delete(existing_like)
+        if video.likes_count > 0:
+            video.likes_count -= 1
         db.commit()
         liked = False
         message = "Unliked video successfully"
@@ -27,12 +29,13 @@ def toggle_like(db: Session, video_id: int, user_id: int) -> LikeToggleResponse:
         # Like
         new_like = Like(video_id=video_id, user_id=user_id)
         db.add(new_like)
+        video.likes_count += 1
         db.commit()
         liked = True
         message = "Liked video successfully"
 
     # 3. Get total likes count
-    likes_count = db.query(Like).filter(Like.video_id == video_id).count()
+    likes_count = video.likes_count
 
     return LikeToggleResponse(
         liked=liked,
@@ -122,7 +125,7 @@ def geo_search_merchants(
     """
 
     query_str = f"""
-        SELECT id, name, address, latitude, longitude, description, created_at,
+        SELECT id, name, address, latitude, longitude, description, rating_avg, created_at,
                {haversine_sql} AS distance
         FROM merchants
         WHERE {filter_clause}
@@ -153,6 +156,7 @@ def geo_search_merchants(
             "latitude": row.latitude,
             "longitude": row.longitude,
             "description": row.description,
+            "rating_avg": row.rating_avg,
             "distance": round(row.distance, 3), # Round to 3 decimal places (meters precision)
             "created_at": row.created_at
         })

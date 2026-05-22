@@ -8,13 +8,16 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
+    google_id = Column(String, unique=True, index=True, nullable=True)
     full_name = Column(String, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     role = Column(String, default="reviewer", nullable=False) # e.g. admin, merchant, reviewer
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
     merchants = relationship("Merchant", back_populates="owner")
-    uploaded_videos = relationship("Video", back_populates="uploader")
+    videos = relationship("Video", back_populates="reviewer")
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
 
@@ -27,13 +30,14 @@ class Merchant(Base):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     description = Column(Text, nullable=True)
+    rating_avg = Column(Float, default=0.0, nullable=False)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
     owner = relationship("User", back_populates="merchants")
     menus = relationship("Menu", back_populates="merchant", cascade="all, delete-orphan")
-    videos = relationship("Video", back_populates="merchant")
+    videos = relationship("Video", back_populates="tagged_merchant")
     campaigns = relationship("Campaign", back_populates="merchant", cascade="all, delete-orphan")
 
 class Menu(Base):
@@ -41,10 +45,9 @@ class Menu(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False)
-    name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
+    dish_name = Column(String, nullable=False)
+    price = Column(Integer, nullable=False)
     is_available = Column(Boolean, default=True, nullable=False)
-    description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
@@ -56,14 +59,16 @@ class Video(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     video_url = Column(String, nullable=False)
+    thumbnail_url = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)
+    likes_count = Column(Integer, default=0, nullable=False)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    tagged_merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    uploader = relationship("User", back_populates="uploaded_videos")
-    merchant = relationship("Merchant", back_populates="videos")
+    reviewer = relationship("User", back_populates="videos")
+    tagged_merchant = relationship("Merchant", back_populates="videos")
     likes = relationship("Like", back_populates="video", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="video", cascade="all, delete-orphan")
 
@@ -101,6 +106,7 @@ class Campaign(Base):
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False)
     title = Column(String, nullable=False)
     video_url = Column(String, nullable=False)
+    thumbnail_url = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     impressions_count = Column(Integer, default=0, nullable=False)
     clicks_count = Column(Integer, default=0, nullable=False)

@@ -13,7 +13,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.core.database import engine, Base
 from backend.core import all_models  # Đảm bảo tất cả models đã được import để tự động tạo bảng
-from backend.modules.search_interact.router import router as search_interact_router
+from backend.core.config import settings
+from backend.modules.router import api_router
 
 # Tự động tạo các bảng cơ sở dữ liệu nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
@@ -32,9 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Đăng ký các routers của module
-app.include_router(search_interact_router)
 
 # Đăng ký Router tổng dưới prefix chung (ví dụ: /api)
 app.include_router(api_router, prefix=settings.API_V1_STR)

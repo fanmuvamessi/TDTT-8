@@ -6,7 +6,7 @@ from backend.core.security import get_current_user
 from backend.core.all_models import User
 from backend.modules.search_interact import schemas, services
 
-router = APIRouter(prefix="/api/search-interact", tags=["Search & Interactions"])
+router = APIRouter(tags=["Search & Interactions"])
 
 @router.post(
     "/videos/{video_id}/like",
@@ -76,9 +76,6 @@ def search_merchants_by_geo(
         offset=offset
     )
 
-from fastapi import APIRouter
-
-router = APIRouter()
 
 @router.get("/status", summary="Kiểm tra trạng thái Module Search & Interact")
 def get_status():

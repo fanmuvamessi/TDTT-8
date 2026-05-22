@@ -40,7 +40,15 @@ class Settings(BaseSettings):
         return []
 
     # URL kết nối Cơ sở dữ liệu PostgreSQL
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fallback_to_sqlite(cls, v: str) -> str:
+        if not v or not v.strip():
+            print("[DATABASE] Không tìm thấy DATABASE_URL trong .env! Tự động lùi về xài SQLite local.")
+            return "sqlite:///./food_review.db"
+        return v
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else ".env",

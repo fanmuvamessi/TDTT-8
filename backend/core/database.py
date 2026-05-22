@@ -1,11 +1,11 @@
-import os
 import math
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from backend.core.config import settings
 
 # Config database URL, fallback to sqlite for local testing
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./food_review.db")
+DATABASE_URL = settings.DATABASE_URL
 
 # SQLite needs some special configurations
 connect_args = {}

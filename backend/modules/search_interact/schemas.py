@@ -7,6 +7,7 @@ class UserMinResponse(BaseModel):
     id: int
     email: str
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -40,6 +41,7 @@ class MerchantSearchResponse(BaseModel):
     latitude: float
     longitude: float
     description: Optional[str] = None
+    rating_avg: float
     distance: float  # In kilometers
     created_at: datetime
 

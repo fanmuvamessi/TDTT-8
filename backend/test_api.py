@@ -46,8 +46,10 @@ def run_tests():
         print(f"-> Thành công! Tìm thấy {len(merchants)} quán ăn trong bán kính 5km:")
         
         for idx, merchant in enumerate(merchants):
-            print(f"   {idx+1}. {merchant['name']} - Khoảng cách: {merchant['distance']} km (Vị trí: {merchant['latitude']}, {merchant['longitude']})")
+            print(f"   {idx+1}. {merchant['name']} - Khoảng cách: {merchant['distance']} km (Vị trí: {merchant['latitude']}, {merchant['longitude']}) - Rating: {merchant['rating_avg']}")
             assert merchant['distance'] <= radius, "Khoảng cách vượt quá bán kính lọc!"
+            assert "rating_avg" in merchant, "rating_avg không có trong kết quả tìm kiếm!"
+            assert 3.5 <= merchant['rating_avg'] <= 5.0, "rating_avg không nằm trong khoảng hợp lệ!"
             # Verify distance is sorted ascending
             if idx > 0:
                 assert merchant['distance'] >= merchants[idx-1]['distance'], "Thứ tự khoảng cách chưa được sắp xếp tăng dần!"

@@ -39,11 +39,11 @@ def seed_database():
 
         print("\n--- Creating mock users ---")
         users = [
-            User(email="admin@foodreview.com", full_name="Nguyễn Admin", role="admin"),
-            User(email="reviewer1@foodreview.com", full_name="Khoa Pug Review", role="reviewer"),
-            User(email="reviewer2@foodreview.com", full_name="Ninh Titop", role="reviewer"),
-            User(email="merchant1@foodreview.com", full_name="Chủ Quán Ba Đạt", role="merchant"),
-            User(email="merchant2@foodreview.com", full_name="Bà Sáu Bán Chè", role="merchant")
+            User(email="admin@foodreview.com", full_name="Nguyễn Admin", role="admin", google_id="g_admin_123", avatar_url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"),
+            User(email="reviewer1@foodreview.com", full_name="Khoa Pug Review", role="reviewer", google_id="g_rev_1", avatar_url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150"),
+            User(email="reviewer2@foodreview.com", full_name="Ninh Titop", role="reviewer", google_id="g_rev_2", avatar_url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"),
+            User(email="merchant1@foodreview.com", full_name="Chủ Quán Ba Đạt", role="merchant", google_id="g_mer_1", avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"),
+            User(email="merchant2@foodreview.com", full_name="Bà Sáu Bán Chè", role="merchant", google_id="g_mer_2", avatar_url="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150")
         ]
         db.add_all(users)
         db.commit()
@@ -122,6 +122,7 @@ def seed_database():
                 latitude=round(lat, 6),
                 longitude=round(lng, 6),
                 description=category["desc"],
+                rating_avg=round(random.uniform(3.5, 5.0), 1),
                 owner_id=random.choice([users[3].id, users[4].id])
             )
             db.add(merchant)
@@ -136,10 +137,9 @@ def seed_database():
             for name, price in menu_items:
                 menu = Menu(
                     merchant_id=merchant_obj.id,
-                    name=name,
-                    price=price,
-                    is_available=True,
-                    description=f"Món ăn đặc sắc nhất của {merchant_obj.name}"
+                    dish_name=name,
+                    price=int(price),
+                    is_available=True
                 )
                 db.add(menu)
                 total_menus += 1
@@ -168,9 +168,11 @@ def seed_database():
             video = Video(
                 title=title,
                 video_url=url,
+                thumbnail_url=f"https://images.unsplash.com/photo-{random.randint(1500000000000, 1600000000000)}?w=400",
                 description=desc,
-                uploader_id=random.choice([users[1].id, users[2].id]),
-                merchant_id=sample_merchants[idx].id if idx < len(sample_merchants) else None
+                likes_count=0,
+                reviewer_id=random.choice([users[1].id, users[2].id]),
+                tagged_merchant_id=sample_merchants[idx].id if idx < len(sample_merchants) else None
             )
             db.add(video)
             videos.append(video)
@@ -188,6 +190,7 @@ def seed_database():
         for video in videos:
             # Ngẫu nhiên tạo 1-4 lượt thích cho mỗi video
             likers = random.sample(users, random.randint(1, 4))
+            video.likes_count = len(likers)
             for liker in likers:
                 like = Like(user_id=liker.id, video_id=video.id)
                 db.add(like)
@@ -235,9 +238,9 @@ def seed_database():
         print("\n--- Creating advertisement campaigns ---")
         # Phục vụ thuật toán trộn Feed ở tuần sau
         campaigns = [
-            Campaign(merchant_id=sample_merchants[0].id, title="Đại tiệc siêu sale phở tái nạm", video_url="https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41582-large.mp4", is_active=True, impressions_count=120, clicks_count=15),
-            Campaign(merchant_id=sample_merchants[1].id, title="Bánh mì tặng kèm trà đào giải nhiệt", video_url="https://assets.mixkit.co/videos/preview/mixkit-cutting-slices-of-fresh-bread-41595-large.mp4", is_active=True, impressions_count=85, clicks_count=8),
-            Campaign(merchant_id=sample_merchants[2].id, title="Combo cơm tấm sườn chả chỉ 39k", video_url="https://assets.mixkit.co/videos/preview/mixkit-pouring-sauce-on-a-meal-41584-large.mp4", is_active=True, impressions_count=230, clicks_count=42),
+            Campaign(merchant_id=sample_merchants[0].id, title="Đại tiệc siêu sale phở tái nạm", video_url="https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41582-large.mp4", thumbnail_url="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400", is_active=True, impressions_count=120, clicks_count=15),
+            Campaign(merchant_id=sample_merchants[1].id, title="Bánh mì tặng kèm trà đào giải nhiệt", video_url="https://assets.mixkit.co/videos/preview/mixkit-cutting-slices-of-fresh-bread-41595-large.mp4", thumbnail_url="https://images.unsplash.com/photo-1509722747041-616f39b57569?w=400", is_active=True, impressions_count=85, clicks_count=8),
+            Campaign(merchant_id=sample_merchants[2].id, title="Combo cơm tấm sườn chả chỉ 39k", video_url="https://assets.mixkit.co/videos/preview/mixkit-pouring-sauce-on-a-meal-41584-large.mp4", thumbnail_url="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400", is_active=True, impressions_count=230, clicks_count=42),
         ]
         db.add_all(campaigns)
         db.commit()

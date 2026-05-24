@@ -20,7 +20,6 @@ from backend.core.all_models import Video, Like, Comment, Merchant
 from backend.modules.search_interact import services, schemas
 
 def run_tests():
-    print(DATABASE_URL)
     print("==================================================")
     print("🚀 BẮT ĐẦU CHẠY THỬ NGHIỆM HỆ THỐNG SERVICES BE4 🚀")
     print("==================================================")

@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     FIREBASE_CONFIG_PATH: str = str(CONFIG_DIR / "firebase_config.json")
     
     FIREBASE_CREDENTIALS: Dict[str, Any] = {}
+    
+    # Web API Key dùng cho Firebase REST API để xác thực đăng nhập qua Email/Mật khẩu
+    FIREBASE_WEB_API_KEY: str = ""
+
 
     @field_validator("FIREBASE_CREDENTIALS", mode="before")
     @classmethod

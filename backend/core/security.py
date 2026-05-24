@@ -37,6 +37,33 @@ def get_current_user(
         
     token = authorization.split(" ")[1]
     
+    # Hỗ trợ Mock Token trong môi trường phát triển (Development)
+    if token.startswith("mock_token_"):
+        uid = token.replace("mock_token_", "")
+        user = db.query(User).filter(User.firebase_uid == uid).first()
+        if not user:
+            # Tự động tạo tài khoản giả lập nếu chưa có
+            email = f"{uid}@mock.local" if "@" not in uid else uid
+            user = User(
+                firebase_uid=uid,
+                email=email,
+                full_name=uid.split("@")[0].replace("mock_", "").capitalize(),
+                avatar_url=None,
+                role="reviewer"
+            )
+            try:
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                print(f"[SECURITY] Đã tự động tạo tài khoản MOCK cho UID: {uid}")
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Lỗi khi đồng bộ tài khoản Mock: {str(e)}"
+                )
+        return user
+    
     # Xác thực Firebase ID Token chính thức bằng Firebase Admin SDK
     try:
         decoded_token = auth.verify_id_token(token)

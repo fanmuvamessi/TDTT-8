@@ -1,47 +1,108 @@
+import firebase_admin
+from firebase_admin import credentials, auth
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from backend.core.all_models import User
+from backend.core.config import settings
+
+# Khởi tạo ứng dụng Firebase duy nhất một lần
+if not firebase_admin._apps:
+    try:
+        if settings.FIREBASE_CREDENTIALS:
+            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS)
+            firebase_admin.initialize_app(cred)
+            print("[FIREBASE] Đã khởi tạo Firebase Admin SDK thành công bằng service account.")
+        else:
+            firebase_admin.initialize_app()
+            print("[FIREBASE] Đã khởi tạo Firebase Admin SDK bằng Default Credentials.")
+    except Exception as e:
+        print(f"[FIREBASE] Cảnh báo: Không thể khởi tạo Firebase Admin SDK: {e}")
+        print("[FIREBASE] Vui lòng cấu hình biến môi trường hoặc file config để sử dụng chế độ chính thức.")
 
 def get_current_user(
     authorization: str = Header(None),
-    x_user_id: int = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Get current authenticated user.
-    Supports JWT Token parsing (placeholder for BE1 implementation).
-    Fallbacks to 'x-user-id' header or the first user in the database (for ease of local testing).
+    Xác thực người dùng hiện tại thông qua Firebase ID Token.
+    Chỉ cho phép truy cập nếu Token hợp lệ và khớp với cấu hình Firebase.
+    Tự động đồng bộ (auto-provision) thông tin người dùng vào DB local nếu là lần đầu tiên đăng nhập.
     """
-    # 1. JWT Placeholder / Authorization Header check
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        # In a real setup, we would decode the JWT here:
-        # payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        # user_id = payload.get("sub")
-        # For mock, let's treat the token as a stringified user ID if it is numeric
-        if token.isdigit():
-            user = db.query(User).filter(User.id == int(token)).first()
-            if user:
-                return user
-            
-    # 2. Custom header fallback for easy postman / frontend manual testing
-    if x_user_id is not None:
-        user = db.query(User).filter(User.id == x_user_id).first()
-        if user:
-            return user
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"User with ID {x_user_id} not found in database. Please seed the DB first."
+            detail="Thiếu hoặc không hợp lệ tiêu đề xác thực (Authorization Header). Yêu cầu định dạng 'Bearer <Token>'."
         )
-
-    # 3. Default fallback to the first user in database (so APIs don't fail when no headers are supplied in local dev)
-    default_user = db.query(User).first()
-    if default_user:
-        return default_user
         
-    # If no users exist, raise 401
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No users found in database. Please run the seed script: python seed.py"
-    )
+    token = authorization.split(" ")[1]
+    
+    # Hỗ trợ Mock Token trong môi trường phát triển (Development)
+    if token.startswith("mock_token_"):
+        uid = token.replace("mock_token_", "")
+        user = db.query(User).filter(User.firebase_uid == uid).first()
+        if not user:
+            # Tự động tạo tài khoản giả lập nếu chưa có
+            email = f"{uid}@mock.local" if "@" not in uid else uid
+            user = User(
+                firebase_uid=uid,
+                email=email,
+                full_name=uid.split("@")[0].replace("mock_", "").capitalize(),
+                avatar_url=None,
+                role="reviewer"
+            )
+            try:
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                print(f"[SECURITY] Đã tự động tạo tài khoản MOCK cho UID: {uid}")
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Lỗi khi đồng bộ tài khoản Mock: {str(e)}"
+                )
+        return user
+    
+    # Xác thực Firebase ID Token chính thức bằng Firebase Admin SDK
+    try:
+        decoded_token = auth.verify_id_token(token)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Xác thực Firebase Token thất bại: {str(e)}"
+        )
+        
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Firebase Token không chứa thông tin UID người dùng hợp lệ."
+        )
+        
+    # Tìm kiếm người dùng trong cơ sở dữ liệu Postgres local bằng firebase_uid
+    user = db.query(User).filter(User.firebase_uid == uid).first()
+    
+    # Tự động tạo mới tài khoản nếu chưa tồn tại
+    if not user:
+        email = decoded_token.get("email")
+        user = User(
+            firebase_uid=uid,
+            email=email,
+            full_name=decoded_token.get("name", email.split("@")[0] if email else "User"),
+            avatar_url=decoded_token.get("picture"),
+            role="reviewer"  # Vai trò mặc định cho tài khoản mới
+        )
+        try:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            print(f"[SECURITY] Đã tự động tạo tài khoản mới cho Firebase UID: {uid}")
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Lỗi khi đồng bộ tài khoản người dùng vào hệ thống: {str(e)}"
+            )
+            
+    return user

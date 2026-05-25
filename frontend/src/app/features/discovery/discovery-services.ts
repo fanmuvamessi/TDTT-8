@@ -1,32 +1,28 @@
-import axios from "axios";
-
-export interface MerchantMarker {
+// discovery-services.ts
+export interface Shop {
   id: string;
   name: string;
   lat: number;
   lng: number;
-  address: string;
-  rating: number;
 }
 
-const BASE_URL = "http://localhost:8000/api/v1/search";
-
-export const discoveryServices = {
-  // Lấy các quán ăn xung quanh dựa trên tọa độ thực tế và bán kính lọc
-  getNearbyMerchants: async (lat: number, lng: number, radiusKm: number): Promise<MerchantMarker[]> => {
-    try {
-      const response = await axios.get(`${BASE_URL}/geo-search`, {
-        params: { lat, lng, radius_km: radiusKm }
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi lấy dữ liệu định vị không gian:", error);
-      // Trả về dữ liệu Mock để kiểm thử giao diện tĩnh nếu chưa bật Backend
-      return [
-        { id: "1", name: "Bún Bò Huế US", lat: 10.7628, lng: 106.6823, address: "227 Nguyễn Văn Cừ", rating: 4.8 },
-        { id: "2", name: "Cơm Tấm Hòa Đẹp Trai", lat: 10.7650, lng: 106.6810, address: "Trần Hưng Đạo", rating: 4.5 },
-        { id: "3", name: "Cà Phê Sữa Trí Claude", lat: 10.7610, lng: 106.6850, address: "An Dương Vương", rating: 4.2 }
-      ];
-    }
-  }
+// Công thức Haversine để tính khoảng cách giữa 2 điểm (km)
+export const calculateDistance = (
+  lat1: number, lng1: number, lat2: number, lng2: number
+): number => {
+  const R = 6371; // Bán kính trái đất (km)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
+
+export const filterShopsByRadius = (shops: Shop[], center: [number, number], radius: number) => {
+  return shops.filter(shop => {
+    const distance = calculateDistance(center[0], center[1], shop.lat, shop.lng);
+    return distance <= radius;
+  });
+};
+

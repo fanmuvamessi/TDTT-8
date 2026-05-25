@@ -27,18 +27,30 @@ export default function Layout() {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <AppBar position="static" sx={{ bgcolor: "#ff6b35" }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            FoodSpot
-          </Typography>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <Logout />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", position: "relative" }}>
+      
+      {/* 1. LOGO LUÔN NẰM GÓC TRÁI TRÊN CÙNG (Dùng position: absolute) */}
+      <Box 
+        sx={{ 
+          position: "absolute", 
+          top: 16, 
+          left: 16, 
+          zIndex: 1000 // Đảm bảo luôn nằm trên các nội dung khác
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 900, 
+            color: "#ff6b35", 
+            textShadow: "0 1px 2px rgba(0,0,0,0.3)" 
+          }}
+        >
+          FoodSpot
+        </Typography>
+      </Box>
 
+      {/* 2. Phần nội dung (Outlet) */}
       <Box sx={{ flex: 1, overflow: "auto", bgcolor: "#f5f5f5" }}>
         <Outlet />
       </Box>

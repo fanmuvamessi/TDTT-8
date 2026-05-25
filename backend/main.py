@@ -27,13 +27,6 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",          # Ép về đường dẫn /api/docs
     openapi_url=f"{settings.API_V1_STR}/openapi.json" # Ép về đường dẫn /api/openapi.json
 )
-
-# Mount thư mục static phục vụ file upload ở môi trường local development
-static_dir = os.path.join(current_dir, "static")
-os.makedirs(os.path.join(static_dir, "uploads", "videos"), exist_ok=True)
-os.makedirs(os.path.join(static_dir, "uploads", "menus"), exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
 # Cấu hình CORS để frontend có thể gọi được API
 app.add_middleware(
     CORSMiddleware,

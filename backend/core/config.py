@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,52 +48,68 @@ class Settings(BaseSettings):
     def fallback_to_sqlite(cls, v: str) -> str:
         if not v or not v.strip():
             print("[DATABASE] Không tìm thấy DATABASE_URL trong .env! Tự động lùi về xài SQLite local.")
-            # Đẩy file db ra ngoài thư mục gốc backend cho dễ nhìn, không làm bẩn thư mục config
             return f"sqlite:///{str(CORE_DIR.parent / 'food_review.db')}"
         return v
 
     # ==========================================
-    # CẤU HÌNH ĐƯỜNG DẪN FIREBASE MỚI
+    # CẤU HÌNH CLOUDFLARE R2 MỚI THÊM
     # ==========================================
-    
-    # Mặc định tìm file firebase_config.json ngay trong thư mục config/ mới tạo
+    CLOUDFLARE_R2_ACCOUNT_ID: str = ""
+    CLOUDFLARE_R2_ACCESS_KEY_ID: str = ""
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY: str = ""
+    CLOUDFLARE_R2_BUCKET_NAME: str = ""
+    CLOUDFLARE_R2_PUBLIC_URL: str = ""
+
+    # ==========================================
+    # CẤU HÌNH FIREBASE / GOOGLE JSON
+    # ==========================================
     FIREBASE_CONFIG_PATH: str = str(CONFIG_DIR / "firebase_config.json")
     
-    FIREBASE_CREDENTIALS: Dict[str, Any] = {}
+    # Khai báo trường nhận chuỗi JSON từ Vercel
+    GOOGLE_APPLICATION_CREDENTIALS_JSON: Optional[str] = None
     
-    # Web API Key dùng cho Firebase REST API để xác thực đăng nhập qua Email/Mật khẩu
+    FIREBASE_CREDENTIALS: Dict[str, Any] = {}
     FIREBASE_WEB_API_KEY: str = ""
-
 
     @field_validator("FIREBASE_CREDENTIALS", mode="before")
     @classmethod
     def load_firebase_credentials(cls, v: Any, info: Any) -> Dict[str, Any]:
-        # Ưu tiên 1: Đọc chuỗi JSON cấu hình trực tiếp từ biến môi trường trong .env
+        # --- ƯU TIÊN 1: Đọc từ biến GOOGLE_APPLICATION_CREDENTIALS_JSON của Vercel ---
+        # (Lấy thẳng từ hệ thống env hoặc giá trị đã nạp vào class qua .env local)
+        vercel_env_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if vercel_env_json and vercel_env_json.strip():
+            try:
+                return json.loads(vercel_env_json)
+            except json.JSONDecodeError:
+                print("[FIREBASE] Chuỗi GOOGLE_APPLICATION_CREDENTIALS_JSON trên Vercel lỗi định dạng JSON!")
+
+        # --- ƯU TIÊN 2: Đọc chuỗi JSON cấu hình trực tiếp từ biến nội bộ cũ ---
         if isinstance(v, str) and v.strip():
             try:
                 return json.loads(v)
             except json.JSONDecodeError:
                 print("[FIREBASE] Chuỗi FIREBASE_CREDENTIALS trong .env không hợp lệ dạng JSON!")
 
-        # Ưu tiên 2: Tìm đọc file vật lý theo đường dẫn chỉ định
-        # Lấy giá trị cấu hình từ file .env, nếu không có thì lấy mặc định trong thư mục config/
+        # --- ƯU TIÊN 3: Tìm đọc file vật lý theo đường dẫn chỉ định (Dành cho Local) ---
         config_path_str = os.getenv("FIREBASE_CONFIG_PATH", str(CONFIG_DIR / "firebase_config.json"))
         file_path = Path(config_path_str)
 
         if file_path.exists():
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
-                    print(f"[FIREBASE] Đã nạp thành công file cấu hình: config/{file_path.name}")
+                    print(f"[FIREBASE] Đã nạp thành công file cấu hình từ: config/{file_path.name}")
                     return json.loads(f.read())
             except Exception as e:
                 print(f"[FIREBASE] Lỗi khi đọc file cấu hình tại {file_path}: {e}")
         else:
-            print(f"[FIREBASE] ⚠️ CẢNH BÁO: Không thấy file cấu hình tại: {file_path.absolute()}")
-            print("[FIREBASE] Vui lòng bỏ file 'firebase_config.json' vào thư mục 'config/'")
+            # Chỉ cảnh báo nếu thực sự không tìm thấy bất kỳ cấu hình chuỗi JSON nào ở các bước trên
+            if not vercel_env_json:
+                print(f"[FIREBASE] ⚠️ CẢNH BÁO: Không thấy file cấu hình tại: {file_path.absolute()}")
+                print("[FIREBASE] Vui lòng bỏ file 'firebase_config.json' hoặc cấu hình biến môi trường JSON.")
 
         return {}
 
-    # Đọc file .env từ thư mục config/ tập trung
+    # Đọc file .env từ thư mục config/ tập trung nếu có
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else None,
         env_file_encoding="utf-8",

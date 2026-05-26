@@ -84,7 +84,20 @@ class BaseMerchantTest(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         self.client = TestClient(app)
 
+        # 7. Mock Firebase auth.verify_id_token cho các token test
+        from unittest.mock import patch
+        def mock_verify_id_token(token, *args, **kwargs):
+            if token == "mock_token_test_owner_uid":
+                return {"uid": "test_owner_uid", "email": "owner@test.com", "name": "Test Owner"}
+            elif token == "mock_token_test_non_owner_uid":
+                return {"uid": "test_non_owner_uid", "email": "non_owner@test.com", "name": "Test Regular User"}
+            raise Exception("Invalid mock token in test")
+            
+        self.verify_patcher = patch("backend.core.security.auth.verify_id_token", side_effect=mock_verify_id_token)
+        self.verify_patcher.start()
+
     def tearDown(self):
+        self.verify_patcher.stop()
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
         app.dependency_overrides.clear()

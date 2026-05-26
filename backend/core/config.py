@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Food Review API"
     API_V1_STR: str = "/api"
     ENV: str = "development"
-    ENABLE_MOCK: bool = True
     ENABLE_DB_FALLBACK: bool = True
+
 
     
     # CORS Origins

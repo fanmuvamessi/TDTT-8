@@ -90,10 +90,10 @@ class TestConfigSettings(unittest.TestCase):
         """Test DATABASE_URL lùi về SQLite khi giá trị rỗng hoặc None"""
         expected_sqlite_path = f"sqlite:///{str(CORE_DIR.parent / 'food_review.db')}"
         
-        settings_empty = Settings(DATABASE_URL="")
+        settings_empty = Settings(DATABASE_URL="", ENABLE_DB_FALLBACK=True)
         self.assertEqual(settings_empty.DATABASE_URL, expected_sqlite_path)
         
-        settings_spaces = Settings(DATABASE_URL="   ")
+        settings_spaces = Settings(DATABASE_URL="   ", ENABLE_DB_FALLBACK=True)
         self.assertEqual(settings_spaces.DATABASE_URL, expected_sqlite_path)
 
     def test_firebase_credentials_json_string(self):

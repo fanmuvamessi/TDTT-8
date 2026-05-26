@@ -1,10 +1,15 @@
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from typing import Optional
 from backend.core.database import get_db
 from backend.core.all_models import User
 from backend.core.config import settings
+
+security_scheme = HTTPBearer(auto_error=False)
+
 
 # Khởi tạo ứng dụng Firebase duy nhất một lần
 if not firebase_admin._apps:
@@ -21,7 +26,7 @@ if not firebase_admin._apps:
         print("[FIREBASE] Vui lòng cấu hình biến môi trường hoặc file config để sử dụng chế độ chính thức.")
 
 def get_current_user(
-    authorization: str = Header(None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
     db: Session = Depends(get_db)
 ) -> User:
     """
@@ -29,13 +34,12 @@ def get_current_user(
     Chỉ cho phép truy cập nếu Token hợp lệ và khớp với cấu hình Firebase.
     Tự động đồng bộ (auto-provision) thông tin người dùng vào DB local nếu là lần đầu tiên đăng nhập.
     """
-    if not authorization or not authorization.startswith("Bearer "):
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Thiếu hoặc không hợp lệ tiêu đề xác thực (Authorization Header). Yêu cầu định dạng 'Bearer <Token>'."
+            detail="Thiếu hoặc không hợp lệ tiêu đề xác thực (Authorization Header). Vui lòng nhập token Bearer."
         )
-        
-    token = authorization.split(" ")[1]
+    token = credentials.credentials
     
     # Xác thực Firebase ID Token chính thức bằng Firebase Admin SDK
     try:

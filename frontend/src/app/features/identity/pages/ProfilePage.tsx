@@ -55,7 +55,7 @@ export default function Profile() {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <Box sx={{ maxWidth: 600, mx: "auto", pb: 2 }}>
+    <Box sx={{ maxWidth: 600, mx: "auto", pb: 2, bgcolor: "#121212", minHeight: "100vh", color: "#ffffff" }}>
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
           <Avatar
@@ -69,19 +69,19 @@ export default function Profile() {
           >
             {userInitial}
           </Avatar>
-          <IconButton sx={{ alignSelf: "flex-start" }}>
+          <IconButton sx={{ alignSelf: "flex-start", color: "#ffffff" }}>
             <Settings />
           </IconButton>
         </Box>
 
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: "#ffffff" }}>
           {userName}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" sx={{ mb: 2, color: "#8892b0" }}>
           @{userName.toLowerCase().replace(" ", "")} • Foodie & Traveler
         </Typography>
 
-        <Typography variant="body2" sx={{ mb: 2 }}>
+        <Typography variant="body2" sx={{ mb: 2, color: "#ffffff", lineHeight: 1.6 }}>
           🍜 Yêu ẩm thực Việt Nam
           <br />
           📍 Sài Gòn
@@ -91,26 +91,26 @@ export default function Profile() {
 
         <Stack direction="row" spacing={3} sx={{ mb: 3 }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
               124
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#8892b0" }}>
               Bài viết
             </Typography>
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
               8.5K
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#8892b0" }}>
               Người theo dõi
             </Typography>
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
               342
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#8892b0" }}>
               Đang theo dõi
             </Typography>
           </Box>
@@ -125,6 +125,7 @@ export default function Profile() {
               "&:hover": { bgcolor: "#e55a2b" },
               textTransform: "none",
               fontWeight: 600,
+              color: "#ffffff"
             }}
           >
             Chỉnh sửa trang cá nhân
@@ -133,8 +134,9 @@ export default function Profile() {
             variant="outlined"
             sx={{
               minWidth: 44,
-              borderColor: "#e0e0e0",
-              color: "text.primary",
+              borderColor: "#2d2d2d",
+              color: "#ffffff",
+              "&:hover": { borderColor: "#ff6b35", bgcolor: "#1a1a1a" }
             }}
           >
             <Share />
@@ -142,19 +144,22 @@ export default function Profile() {
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", gap: 1 }}>
-          <Chip label="Phở" size="small" />
-          <Chip label="Bún" size="small" />
-          <Chip label="Street Food" size="small" />
-          <Chip label="Cafe" size="small" />
+          <Chip label="Phở" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
+          <Chip label="Bún" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
+          <Chip label="Street Food" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
+          <Chip label="Cafe" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
         </Stack>
       </Box>
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "#2d2d2d" }}>
         <Tabs
           value={currentTab}
           onChange={handleTabChange}
           variant="fullWidth"
           sx={{
+            "& .MuiTab-root": {
+              color: "#ffffff",
+            },
             "& .Mui-selected": {
               color: "#ff6b35 !important",
             },
@@ -171,8 +176,8 @@ export default function Profile() {
       <Box sx={{ p: 1 }}>
         <Grid container spacing={0.5}>
           {displayPosts.map((image, index) => (
-            <Grid item xs={4} key={index}>
-              <Card sx={{ position: "relative", paddingTop: "100%", cursor: "pointer" }}>
+            <Grid size={{ xs: 4 }} key={index}> 
+              <Card sx={{ position: "relative", paddingTop: "100%", cursor: "pointer", bgcolor: "#1e1e1e", border: "1px solid #2d2d2d" }}>
                 <CardMedia
                   component="img"
                   image={image}
@@ -196,7 +201,7 @@ export default function Profile() {
                     bgcolor: "rgba(0,0,0,0)",
                     transition: "background-color 0.2s",
                     "&:hover": {
-                      bgcolor: "rgba(0,0,0,0.3)",
+                      bgcolor: "rgba(0,0,0,0.4)",
                     },
                   }}
                 />
@@ -207,8 +212,8 @@ export default function Profile() {
 
         {displayPosts.length === 0 && (
           <Box sx={{ textAlign: "center", py: 8 }}>
-            <Favorite sx={{ fontSize: 64, color: "#e0e0e0", mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+            <Favorite sx={{ fontSize: 64, color: "#2d2d2d", mb: 2 }} />
+            <Typography variant="h6" sx={{ color: "#8892b0" }}>
               Chưa có bài viết nào
             </Typography>
           </Box>

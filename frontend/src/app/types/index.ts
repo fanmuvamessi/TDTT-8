@@ -12,16 +12,12 @@ export interface ReviewPost {
   imageUrl?: string;
   likes: number;
   createdAt: string;
-}
-
-export interface ShortVideo {
-  id: string;
-  author: User;
-  videoUrl: string;
-  description: string;
-  likes: number;
+  merchantName: string;
+  rating: number;
+  tags: string[];
   commentsCount: number;
 }
+
 
 export interface MenuItem {
   id: string;
@@ -39,9 +35,15 @@ export interface Merchant {
   menu: MenuItem[];
 }
 
-export type ExtendedShortVideo = ShortVideo & {
-  rating?: number;
-  merchantName?: string;
-  tags?: string[];
-  commentsCount?: number;
-};
+export interface ExtendedShortVideo {
+  id: string;
+  author: User;
+  videoUrl: string;
+  description: string;
+  likes: number;
+  commentsCount: number;
+  rating: number;      // Bắt buộc 
+  merchantName: string; // Bắt buộc 
+  tags: string[];      // Bắt buộc 
+  views?: string;
+}

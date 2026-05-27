@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from backend.core.database import get_db
-from backend.core.security import get_current_user
+from backend.core.security import get_current_user, RoleChecker
 from backend.core.all_models import User
 from backend.modules.content import services, schemas
 
@@ -43,7 +43,7 @@ def get_upload_url(
 )
 def create_video_metadata(
     payload: schemas.VideoCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(RoleChecker(["reviewer", "merchant"])),
     db: Session = Depends(get_db)
 ):
     return services.create_video(

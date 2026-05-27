@@ -102,3 +102,21 @@ def get_current_user(
                 )
             
     return user
+
+
+class RoleChecker:
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        # Quyền tối cao của Admin hệ thống
+        if current_user.role == "admin":
+            return current_user
+            
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Quyền truy cập bị từ chối. Vai trò '{current_user.role}' không được phép thực hiện hành động này. Yêu cầu: {self.allowed_roles}"
+            )
+        return current_user
+

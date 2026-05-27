@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
-from backend.core.security import get_current_user
+from backend.core.security import get_current_user, RoleChecker
 from backend.core.all_models import User
 from . import schemas, services
 
@@ -11,7 +11,7 @@ router = APIRouter()
 def create_merchant_endpoint(
     merchant: schemas.MerchantCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(RoleChecker(["merchant"]))
 ):
     """
     API này cho phép người dùng đăng ký một quán ăn mới. Người tạo sẽ tự động trở thành chủ quán (owner).
@@ -34,7 +34,7 @@ def create_menu_endpoint(
     merchant_id: int, 
     menu: schemas.MenuCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(RoleChecker(["merchant"]))
 ):
     """
     Thêm một món ăn mới. **Lưu ý:** Chỉ tài khoản của Chủ quán (owner) mới có quyền thực hiện hành động này.
@@ -43,7 +43,7 @@ def create_menu_endpoint(
     if not merchant:
         raise HTTPException(status_code=404, detail="Merchant not found")
     
-    if merchant.owner_id != current_user.id:
+    if merchant.owner_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Chỉ chủ quán mới có quyền thêm món")
         
     return services.create_menu_item(db, merchant_id, menu)
@@ -53,11 +53,18 @@ def toggle_campaign_endpoint(
     merchant_id: int, 
     is_active: bool, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(RoleChecker(["merchant"]))
 ):
     """
     Kích hoạt hoặc tạm dừng chiến dịch quảng cáo của quán ăn trên hệ thống.
     """
+    merchant = services.get_merchant(db, merchant_id)
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+        
+    if merchant.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ chủ quán mới có quyền cấu hình quảng cáo")
+
     campaign = services.toggle_campaign(db, merchant_id, is_active)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -67,14 +74,19 @@ def toggle_campaign_endpoint(
 def get_stats_endpoint(
     merchant_id: int, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(RoleChecker(["merchant"]))
 ):
     """
     Lấy dữ liệu thống kê tổng số lượt hiển thị (impressions) và số lượt click vào quảng cáo của quán ăn.
     """
-    merchant, total_clicks, total_impressions = services.get_stats(db, merchant_id)
+    merchant = services.get_merchant(db, merchant_id)
     if not merchant:
         raise HTTPException(status_code=404, detail="Merchant not found")
+        
+    if merchant.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ chủ quán mới có quyền xem thống kê")
+
+    merchant, total_clicks, total_impressions = services.get_stats(db, merchant_id)
     return schemas.StatsResponse(
         total_clicks=total_clicks, 
         total_ad_impressions=total_impressions

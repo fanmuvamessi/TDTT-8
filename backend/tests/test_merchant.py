@@ -67,11 +67,27 @@ class BaseMerchantTest(unittest.TestCase):
             full_name="Test Regular User",
             role="reviewer"
         )
+        self.other_merchant = User(
+            firebase_uid="test_other_merchant_uid",
+            email="other_merchant@test.com",
+            full_name="Other Merchant",
+            role="merchant"
+        )
+        self.admin = User(
+            firebase_uid="test_admin_uid",
+            email="admin@test.com",
+            full_name="Test Admin",
+            role="admin"
+        )
         self.db.add(self.owner)
         self.db.add(self.non_owner)
+        self.db.add(self.other_merchant)
+        self.db.add(self.admin)
         self.db.commit()
         self.db.refresh(self.owner)
         self.db.refresh(self.non_owner)
+        self.db.refresh(self.other_merchant)
+        self.db.refresh(self.admin)
 
         # 6. Override dependency get_db của FastAPI để trả về Session DB test độc lập
         def override_get_db():
@@ -91,6 +107,10 @@ class BaseMerchantTest(unittest.TestCase):
                 return {"uid": "test_owner_uid", "email": "owner@test.com", "name": "Test Owner"}
             elif token == "mock_token_test_non_owner_uid":
                 return {"uid": "test_non_owner_uid", "email": "non_owner@test.com", "name": "Test Regular User"}
+            elif token == "mock_token_test_other_merchant_uid":
+                return {"uid": "test_other_merchant_uid", "email": "other_merchant@test.com", "name": "Other Merchant"}
+            elif token == "mock_token_test_admin_uid":
+                return {"uid": "test_admin_uid", "email": "admin@test.com", "name": "Test Admin"}
             raise Exception("Invalid mock token in test")
             
         self.verify_patcher = patch("backend.core.security.auth.verify_id_token", side_effect=mock_verify_id_token)
@@ -281,8 +301,8 @@ class TestMerchantRouter(BaseMerchantTest):
         merchant_in = schemas.MerchantCreate(name="Trà Sữa KOI", latitude=10.77, longitude=106.69)
         db_merchant = services.create_merchant(self.db, merchant_in, self.owner.id)
         
-        # Thêm món với tài khoản của Non-Owner -> Bị cấm (403)
-        headers = {"Authorization": "Bearer mock_token_test_non_owner_uid"}
+        # Thêm món với tài khoản của một Merchant khác (không sở hữu quán này) -> Bị cấm (403)
+        headers = {"Authorization": "Bearer mock_token_test_other_merchant_uid"}
         menu_payload = {
             "dish_name": "Trà Xanh Kỳ Lân",
             "price": 50000,
@@ -296,6 +316,27 @@ class TestMerchantRouter(BaseMerchantTest):
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["detail"], "Chỉ chủ quán mới có quyền thêm món")
+
+    def test_create_menu_endpoint_as_reviewer_forbidden(self):
+        # Tạo sẵn merchant trong DB test thuộc quyền của Owner
+        merchant_in = schemas.MerchantCreate(name="Trà Sữa KOI", latitude=10.77, longitude=106.69)
+        db_merchant = services.create_merchant(self.db, merchant_in, self.owner.id)
+        
+        # Thêm món với tài khoản reviewer (không có role merchant) -> Bị chặn bởi RoleChecker (403)
+        headers = {"Authorization": "Bearer mock_token_test_non_owner_uid"}
+        menu_payload = {
+            "dish_name": "Trà Xanh Kỳ Lân",
+            "price": 50000,
+            "is_available": True
+        }
+        
+        response = self.client.post(
+            f"/api/merchant/{db_merchant.id}/menus", 
+            json=menu_payload, 
+            headers=headers
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Quyền truy cập bị từ chối", response.json()["detail"])
 
     def test_create_menu_endpoint_merchant_not_found(self):
         headers = {"Authorization": "Bearer mock_token_test_owner_uid"}
@@ -333,7 +374,7 @@ class TestMerchantRouter(BaseMerchantTest):
             headers=headers
         )
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Campaign not found")
+        self.assertEqual(response.json()["detail"], "Merchant not found")
 
     def test_get_stats_endpoint(self):
         merchant_in = schemas.MerchantCreate(name="Quán Sinh Tố", latitude=10.77, longitude=106.69)
@@ -358,6 +399,41 @@ class TestMerchantRouter(BaseMerchantTest):
         response = self.client.get("/api/merchant/9999/stats", headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["detail"], "Merchant not found")
+
+    def test_create_merchant_endpoint_as_reviewer_forbidden(self):
+        headers = {"Authorization": "Bearer mock_token_test_non_owner_uid"} # reviewer
+        payload = {
+            "name": "Quán Cơm Bình Dân",
+            "latitude": 10.776,
+            "longitude": 106.695
+        }
+        response = self.client.post("/api/merchant/", json=payload, headers=headers)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Quyền truy cập bị từ chối", response.json()["detail"])
+
+    def test_create_merchant_endpoint_as_admin_success(self):
+        headers = {"Authorization": "Bearer mock_token_test_admin_uid"} # admin
+        payload = {
+            "name": "Quán Cơm Hoàn Mỹ",
+            "latitude": 10.776,
+            "longitude": 106.695
+        }
+        response = self.client.post("/api/merchant/", json=payload, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["name"], "Quán Cơm Hoàn Mỹ")
+
+    def test_toggle_campaign_endpoint_as_admin_success(self):
+        merchant_in = schemas.MerchantCreate(name="Trà Sữa Admin", latitude=10.77, longitude=106.69)
+        db_merchant = services.create_merchant(self.db, merchant_in, self.owner.id) # Owned by Owner, not Admin
+
+        headers = {"Authorization": "Bearer mock_token_test_admin_uid"} # Admin bypasses ownership
+        response = self.client.patch(
+            f"/api/merchant/{db_merchant.id}/campaigns/toggle?is_active=true", 
+            headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "Campaign updated")
+        self.assertTrue(response.json()["is_active"])
 
 
 if __name__ == "__main__":

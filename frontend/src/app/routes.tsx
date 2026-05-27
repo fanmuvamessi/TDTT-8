@@ -1,8 +1,10 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter } from "react-router-dom";
 import Layout from "./common/components/Layout";
 import HomePage from "./features/content/pages/HomePage";
 import VideosPage from "./features/content/pages/VideosPage";
 import MapPage from "./features/discovery/pages/MapPage";
+import MerchantListPage from "./features/merchant/pages/MerchantListPage";
+import MerchantDetailPage from "./features/merchant/pages/MerchantDetailPage";
 import ProfilePage from "./features/identity/pages/ProfilePage";
 import AuthPage from "./features/identity/pages/AuthPage";
 
@@ -19,6 +21,8 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: "videos", Component: VideosPage },
       { path: "map", Component: MapPage },
+      { path: "merchants", Component: MerchantListPage },
+      { path: "merchants/:id", Component: MerchantDetailPage },
       { path: "profile", Component: ProfilePage },
     ],
   },

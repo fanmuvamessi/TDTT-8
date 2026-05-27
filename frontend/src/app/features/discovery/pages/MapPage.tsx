@@ -17,17 +17,25 @@ import {
 } from "@mui/material";
 import { Search, LocationOn, DirectionsWalk, GpsFixed, Restaurant } from "@mui/icons-material"; 
 import MapView from "../components/MapView";
-import { filterShopsByRadius, calculateDistance, Shop } from "../discovery-services";
-
-const MOCK_SHOPS: Shop[] = [
-  { id: "1", name: "Quán ăn A", lat: 10.7769, lng: 106.7009 },
-  { id: "2", name: "Coffee B", lat: 10.7800, lng: 106.7050 }
-];
+import { filterShopsByRadius, calculateDistance } from "../discovery-services";
+// Import trực tiếp mockHomeMerchants thay thế cho việc khai báo MOCK_SHOPS cứng
+import { mockHomeMerchants } from "../../content/mock-data";
+import { useLocation } from "react-router-dom";
 
 export default function MapPage() {
   const [radius, setRadius] = useState<number>(7);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.lat && location.state?.lng) {
+      setCenter([location.state.lat, location.state.lng]);
+      if (location.state.name) {
+        setSearchTerm(location.state.name);
+      }
+    }
+  }, [location.state]);
+
   // Trạng thái kiểm soát việc ẩn/hiển thị bảng danh sách gợi ý
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -60,7 +68,7 @@ export default function MapPage() {
 
   // Danh sách quán ăn lọc theo bán kính (Dùng cho các Marker và List phía dưới)
   const filteredShops = useMemo(() => {
-    return MOCK_SHOPS.filter(shop => 
+    return mockHomeMerchants.filter(shop => 
       shop.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
       calculateDistance(center[0], center[1], shop.lat, shop.lng) <= radius
     );
@@ -69,7 +77,7 @@ export default function MapPage() {
   // Danh sách các quán ăn gợi ý (Chỉ lọc theo từ khóa chữ gõ vào, không phụ thuộc bán kính để người dùng dễ tìm kiếm)
   const suggestedShops = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    return MOCK_SHOPS.filter(shop => 
+    return mockHomeMerchants.filter(shop => 
       shop.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm]);
@@ -86,7 +94,7 @@ export default function MapPage() {
   }, []);
 
   // Xử lý khi người dùng chọn một quán ăn từ danh sách gợi ý
-  const handleSelectShop = (shop: Shop) => {
+  const handleSelectShop = (shop: typeof mockHomeMerchants[0]) => {
     setSearchTerm(shop.name); // Điền tên quán vào thanh tìm kiếm
     setCenter([shop.lat, shop.lng]); // Đưa bản đồ bay tới quán được chọn
     setShowSuggestions(false); // Ẩn danh sách gợi ý đi
@@ -206,7 +214,7 @@ export default function MapPage() {
                       variant: "body2",
                       fontWeight: 700,
                       color: "#0f172a",
-                      transition: "color 0.2s ease"
+                      sx: { transition: "color 0.2s ease" } // ĐÃ SỬA: Đưa transition vào thẻ sx hợp lệ
                     }}
                     secondary={`📍 Tọa độ: ${shop.lat.toFixed(3)}, ${shop.lng.toFixed(3)}`}
                     secondaryTypographyProps={{

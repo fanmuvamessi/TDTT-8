@@ -1,23 +1,40 @@
-// Định nghĩa kiểu dữ liệu cho toàn bộ module của bạn
+// Định nghĩa kiểu dữ liệu cơ bản dùng chung
 export interface User {
   id: string;
   name: string;
   avatarUrl: string;
+  merchants?: Merchant[];
 }
 
-export interface ReviewPost {
+// 1. Dữ liệu Video (Dùng cho khối Review)
+export interface ExtendedShortVideo {
   id: string;
   author: User;
-  content: string;
-  imageUrl?: string;
+  videoUrl: string;
+  thumbnail_url: string; // Thêm trường này để hiển thị ảnh bìa
+  description: string;
   likes: number;
-  createdAt: string;
-  merchantName: string;
-  rating: number;
-  tags: string[];
   commentsCount: number;
+  rating: number; 
+  merchantName: string;
+  merchantId: string;
+  tags: string[];
+  views?: string;
 }
 
+// 2. Dữ liệu Quán ăn (Dùng cho khối Gần bạn)
+export interface Merchant {
+  id: string;
+  name: string;
+  address: string;
+  distance: string;     // Thêm khoảng cách (VD: "500m")
+  rating_avg: number;   // Sửa tên cho đồng nhất với database/API
+  coverImageUrl: string;
+  menu?: MenuItem[];    // Để optional vì có thể chưa cần load ngay
+  owner?: User;
+  lat: number;
+  lng: number;
+}
 
 export interface MenuItem {
   id: string;
@@ -26,24 +43,11 @@ export interface MenuItem {
   imageUrl: string;
 }
 
-export interface Merchant {
+// 3. Dữ liệu Chiến dịch (Dùng cho khối Quảng cáo)
+export interface Campaign {
   id: string;
-  name: string;
-  address: string;
-  rating: number;
-  coverImageUrl: string;
-  menu: MenuItem[];
-}
-
-export interface ExtendedShortVideo {
-  id: string;
-  author: User;
-  videoUrl: string;
-  description: string;
-  likes: number;
-  commentsCount: number;
-  rating: number;      // Bắt buộc 
-  merchantName: string; // Bắt buộc 
-  tags: string[];      // Bắt buộc 
-  views?: string;
+  title: string;
+  thumbnail_url: string;
+  link: string;
+  is_sponsored: boolean;
 }

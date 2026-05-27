@@ -1,94 +1,97 @@
+// src/app/features/merchant/pages/MerchantDetailPage.tsx
 import React from "react";
-import { Box, Typography, Card, Stack, Divider } from "@mui/material";
-import { ArrowBack, Star, LocationOn, MenuBook } from "@mui/icons-material";
-import { useParams, useNavigate } from "react-router";
-import { MOCK_MERCHANTS } from "./MerchantListPage";
-
-const MOCK_MENU = [
-  { id: "f1", name: "Tô Đặc Biệt (Giò, Chả cua, Nạm bò)", price: "45.000đ", desc: "Món ăn bán chạy nhất, nước lèo hầm xương 12 tiếng ngon ngọt." },
-  { id: "f2", name: "Tô Thường thịt nạm nạc", price: "35.000đ", desc: "Phù hợp cho bữa sáng dinh dưỡng, đi kèm rau sống và giá trụng bắp chuối." },
-  { id: "f3", name: "Đĩa Cơm Sườn nướng mật ong", price: "40.000đ", desc: "Sườn cốt lết nướng thơm phức bốc khói, ăn kèm mỡ hành nước mắm kẹo." }
-];
+import { useParams, useNavigate } from "react-router-dom";
+import { Box, Typography, Stack, Card, CardMedia, CardContent, Divider, IconButton, CircularProgress } from "@mui/material";
+import { ArrowBack, LocationOn, Star, DirectionsRun } from "@mui/icons-material";
+import { mockHomeMerchants } from "../../content/mock-data"; // Đảm bảo đường dẫn đúng
 
 export default function MerchantDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // Lấy id từ URL
   const navigate = useNavigate();
 
-  const merchant = MOCK_MERCHANTS.find((m) => m.id === id) || MOCK_MERCHANTS[0];
+  // Tìm quán ăn khớp với ID từ URL
+  const merchant = mockHomeMerchants.find((m) => m.id === id);
+
+  // Xử lý trường hợp không tìm thấy quán
+  if (!merchant) {
+    return (
+      <Box sx={{ bgcolor: "#000", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+        <Typography>Không tìm thấy quán ăn!</Typography>
+      </Box>
+    );
+  }
+
+  // Hàm xử lý khi click vào địa chỉ chuyển hướng sang trang bản đồ (MapPage) kèm theo tọa độ quán
+  const handleAddressClick = () => {
+    // Điều hướng về trang map (đường dẫn tùy thuộc vào Router của bạn, thường là "/map" hoặc "/discovery")
+    // Đồng thời truyền tọa độ lat, lng qua state để bản đồ tự động focus vào quán
+    navigate("/map", { state: { lat: merchant.lat, lng: merchant.lng, name: merchant.name } });
+  };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", px: 2, py: 3 }}>
-      <Stack 
-        direction="row" 
-        alignItems="center" 
-        spacing={1} 
-        onClick={() => navigate("/merchants")}
-        sx={{ cursor: "pointer", color: "text.secondary", mb: 3, "&:hover": { color: "#ff6b35" } }}
-      >
-        <ArrowBack sx={{ fontSize: 18 }} />
-        <Typography variant="caption" sx={{ fontWeight: 700 }}>QUAY LẠI DANH SÁCH</Typography>
-      </Stack>
-
-      <Card sx={{ borderRadius: 5, position: "relative", height: 240, overflow: "hidden", mb: 4, boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}>
-        <Box component="img" src={merchant.image} sx={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute" }} />
-        <Box 
-          sx={{ 
-            position: "absolute", inset: 0, 
-            background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 100%)",
-            display: "flex", flexDirection: "column", justifyContent: "flex-end", p: 4, color: "white" 
-          }}
-        >
-          <Stack spacing={1} alignItems="flex-start" sx={{ width: "100%" }}>
-            <Box sx={{ bgcolor: "#ff6b35", px: 1.5, py: 0.5, borderRadius: 1, fontSize: 10, fontWeight: 800 }}>
-              {merchant.category}
-            </Box>
-            <Typography variant="h4" sx={{ fontWeight: 900 }}>
-              {merchant.name}
-            </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1, sm: 3 }} sx={{ opacity: 0.9 }}>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <LocationOn sx={{ fontSize: 16 }} />
-                <Typography variant="caption">{merchant.address}</Typography>
-              </Stack>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <Star sx={{ fontSize: 16, color: "#ffb703" }} />
-                <Typography variant="caption" sx={{ fontWeight: 700 }}>{merchant.rating} ({merchant.reviewsCount} Đánh giá)</Typography>
-              </Stack>
-            </Stack>
-          </Stack>
-        </Box>
-      </Card>
-
-      <Card sx={{ p: 4, borderRadius: 4, border: "1px solid #e2e8f0" }}>
-        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
-          <MenuBook sx={{ color: "#ff6b35" }} />
-          <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b" }}>
-            DANH SÁCH MÓN ĂN & THỰC ĐƠN
-          </Typography>
-        </Stack>
+    <Box sx={{ bgcolor: "#000", minHeight: "100vh", color: "#fff", pb: 4 }}>
+      {/* 1. Phần ảnh bìa */}
+      <Box sx={{ position: "relative", height: 280, width: "100%" }}>
+        <CardMedia component="img" image={merchant.coverImageUrl} sx={{ height: "100%", objectFit: "cover" }} />
         
-        <Divider sx={{ mb: 2 }} />
+        <IconButton onClick={() => navigate(-1)} sx={{ position: "absolute", top: 16, left: 16, color: "white", bgcolor: "rgba(0,0,0,0.3)" }}>
+          <ArrowBack />
+        </IconButton>
 
-        <Stack spacing={2}>
-          {MOCK_MENU.map((dish) => (
-            <Stack 
-              key={dish.id}
-              direction="row" 
-              justifyContent="space-between" 
-              alignItems="center"
-              sx={{ p: 2, borderRadius: 3, "&:hover": { bgcolor: "#f8fafc" } }}
-            >
-              <Box sx={{ pr: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#334155" }}>{dish.name}</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>{dish.desc}</Typography>
-              </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#c2410c", bgcolor: "#fff7ed", px: 2, py: 0.8, borderRadius: 3 }}>
-                {dish.price}
-              </Typography>
-            </Stack>
-          ))}
+        <Typography variant="h4" sx={{ position: "absolute", bottom: 16, left: 16, fontWeight: 900, fontSize: { xs: '1.8rem', sm: '2.5rem' }, textShadow: "2px 2px 8px rgba(0,0,0,1)", color: "#fff" }}>
+          {merchant.name}
+        </Typography>
+
+        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ position: "absolute", bottom: 16, right: 16, bgcolor: "rgba(0,0,0,0.6)", px: 1.5, py: 0.5, borderRadius: 2 }}>
+          <Star sx={{ color: "#ffb703", fontSize: 20 }} />
+          <Typography sx={{ fontWeight: 700 }}>{merchant.rating_avg}</Typography>
         </Stack>
-      </Card>
+      </Box>
+
+      {/* 2. Thông tin chi tiết */}
+      <Box sx={{ p: 3 }}>
+        <Stack spacing={1}>
+          {/* Thêm onClick và cursor: "pointer" để bấm vào địa chỉ, giữ nguyên layout style ban đầu */}
+          <Stack 
+            direction="row" 
+            alignItems="center" 
+            spacing={1} 
+            onClick={handleAddressClick}
+            sx={{ 
+              color: "#aaa", 
+              cursor: "pointer",
+              "&:hover": { color: "#fff" } // Thêm hiệu ứng hover nhẹ khi rê chuột vào để người dùng nhận biết bấm được
+            }}
+          >
+            <LocationOn fontSize="small" />
+            <Typography variant="body2">{merchant.address}</Typography>
+          </Stack>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ color: "#ff6b35" }}>
+            <DirectionsRun fontSize="small" />
+            <Typography variant="body2" fontWeight={600}>{merchant.distance}</Typography>
+          </Stack>
+        </Stack>
+
+        <Divider sx={{ my: 3, borderColor: "#222" }} />
+
+        {/* 3. List Menu */}
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Thực đơn</Typography>
+        <Stack spacing={2}>
+          {merchant.menu && merchant.menu.length > 0 ? (
+            merchant.menu.map((item) => (
+              <Card key={item.id} sx={{ display: "flex", bgcolor: "#111", borderRadius: 3, border: "1px solid #222" }}>
+                <CardMedia component="img" image={item.imageUrl} sx={{ width: 80, height: 80 }} />
+                <CardContent sx={{ py: 1.5 }}>
+                  <Typography variant="subtitle1" fontWeight={600} color="#fff">{item.name}</Typography>
+                  <Typography variant="body2" color="#ff6b35" fontWeight={700}>{item.price.toLocaleString()}đ</Typography>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Typography variant="body2" sx={{ color: "#666" }}>Chưa có thực đơn.</Typography>
+          )}
+        </Stack>
+      </Box>
     </Box>
   );
 }

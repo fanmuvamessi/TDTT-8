@@ -9,6 +9,7 @@ import {
   PlayArrow,
 } from "@mui/icons-material";
 import { ExtendedShortVideo } from "../../../types";
+import { useNavigate } from "react-router-dom";
 
 interface VideoCardProps {
   video: ExtendedShortVideo;
@@ -24,7 +25,11 @@ interface VideoCardProps {
 
 export default function VideoCard({ video, isLiked, onToggleLike, onOpenComments }: VideoCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-
+  const navigate = useNavigate(); // Khởi tạo hook điều hướng
+  const handleMerchantClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Ngăn video tạm dừng khi click vào tên quán
+    navigate(`/merchants/${video.merchantId}`); // Điều hướng đến trang Merchant
+  };
   return (
     <Box
       sx={{
@@ -95,7 +100,9 @@ export default function VideoCard({ video, isLiked, onToggleLike, onOpenComments
             
             <Stack direction="row" alignItems="center" spacing={1}>
               {/* Địa chỉ/Tên quán: Màu trắng nhẹ */}
-              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontWeight: 500, cursor: "pointer", "&:hover": { color: "#fff", textDecoration: "underline" } }}
+              onClick={handleMerchantClick}
+              >
                 {video.merchantName}
               </Typography>
               

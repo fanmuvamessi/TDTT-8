@@ -2,9 +2,21 @@
 import axios from 'axios';
 import { getAccessToken, removeAccessToken } from '../utils/tokens';
 
+const getBaseURL = () => {
+  // 1. Ưu tiên biến môi trường nếu được định nghĩa
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // 2. Khi chạy build Production (ví dụ: trên Vercel), dùng relative path '/api' để gọi cùng domain
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  // 3. Khi chạy ở Local Development, dùng mặc định cổng 8000
+  return 'http://localhost:8000/api';
+};
+
 const axiosClient = axios.create({
-  // Thay đổi URL này thành link deploy hoặc localhost của Backend FastAPI khi chạy thực tế
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },

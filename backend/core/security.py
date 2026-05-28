@@ -1,10 +1,15 @@
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from typing import Optional
 from backend.core.database import get_db
 from backend.core.all_models import User
 from backend.core.config import settings
+
+security_scheme = HTTPBearer(auto_error=False)
+
 
 # Khởi tạo ứng dụng Firebase duy nhất một lần
 if not firebase_admin._apps:
@@ -21,7 +26,7 @@ if not firebase_admin._apps:
         print("[FIREBASE] Vui lòng cấu hình biến môi trường hoặc file config để sử dụng chế độ chính thức.")
 
 def get_current_user(
-    authorization: str = Header(None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
     db: Session = Depends(get_db)
 ) -> User:
     """
@@ -29,40 +34,12 @@ def get_current_user(
     Chỉ cho phép truy cập nếu Token hợp lệ và khớp với cấu hình Firebase.
     Tự động đồng bộ (auto-provision) thông tin người dùng vào DB local nếu là lần đầu tiên đăng nhập.
     """
-    if not authorization or not authorization.startswith("Bearer "):
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Thiếu hoặc không hợp lệ tiêu đề xác thực (Authorization Header). Yêu cầu định dạng 'Bearer <Token>'."
+            detail="Thiếu hoặc không hợp lệ tiêu đề xác thực (Authorization Header). Vui lòng nhập token Bearer."
         )
-        
-    token = authorization.split(" ")[1]
-    
-    # Hỗ trợ Mock Token trong môi trường phát triển (Development)
-    if token.startswith("mock_token_"):
-        uid = token.replace("mock_token_", "")
-        user = db.query(User).filter(User.firebase_uid == uid).first()
-        if not user:
-            # Tự động tạo tài khoản giả lập nếu chưa có
-            email = f"{uid}@mock.local" if "@" not in uid else uid
-            user = User(
-                firebase_uid=uid,
-                email=email,
-                full_name=uid.split("@")[0].replace("mock_", "").capitalize(),
-                avatar_url=None,
-                role="reviewer"
-            )
-            try:
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-                print(f"[SECURITY] Đã tự động tạo tài khoản MOCK cho UID: {uid}")
-            except Exception as e:
-                db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Lỗi khi đồng bộ tài khoản Mock: {str(e)}"
-                )
-        return user
+    token = credentials.credentials
     
     # Xác thực Firebase ID Token chính thức bằng Firebase Admin SDK
     try:
@@ -86,23 +63,60 @@ def get_current_user(
     # Tự động tạo mới tài khoản nếu chưa tồn tại
     if not user:
         email = decoded_token.get("email")
-        user = User(
-            firebase_uid=uid,
-            email=email,
-            full_name=decoded_token.get("name", email.split("@")[0] if email else "User"),
-            avatar_url=decoded_token.get("picture"),
-            role="reviewer"  # Vai trò mặc định cho tài khoản mới
-        )
-        try:
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            print(f"[SECURITY] Đã tự động tạo tài khoản mới cho Firebase UID: {uid}")
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Lỗi khi đồng bộ tài khoản người dùng vào hệ thống: {str(e)}"
+        if email:
+            # Tìm kiếm theo email để liên kết tài khoản nếu có sẵn
+            user = db.query(User).filter(User.email == email).first()
+            
+        if user:
+            # Cập nhật firebase_uid mới cho tài khoản email sẵn có
+            user.firebase_uid = uid
+            try:
+                db.commit()
+                db.refresh(user)
+                print(f"[SECURITY] Đã cập nhật firebase_uid '{uid}' cho tài khoản email '{email}' sẵn có.")
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Lỗi khi cập nhật thông tin tài khoản Firebase UID: {str(e)}"
+                )
+        else:
+            # Tạo mới hoàn toàn nếu cả UID và Email đều chưa tồn tại
+            user = User(
+                firebase_uid=uid,
+                email=email,
+                full_name=decoded_token.get("name", email.split("@")[0] if email else "User"),
+                avatar_url=decoded_token.get("picture"),
+                role="reviewer"  # Vai trò mặc định cho tài khoản mới
             )
+            try:
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                print(f"[SECURITY] Đã tự động tạo tài khoản mới cho Firebase UID: {uid}")
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Lỗi khi đồng bộ tài khoản người dùng vào hệ thống: {str(e)}"
+                )
             
     return user
+
+
+class RoleChecker:
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        # Quyền tối cao của Admin hệ thống
+        if current_user.role == "admin":
+            return current_user
+            
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Quyền truy cập bị từ chối. Vai trò '{current_user.role}' không được phép thực hiện hành động này. Yêu cầu: {self.allowed_roles}"
+            )
+        return current_user
+

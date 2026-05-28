@@ -8,8 +8,12 @@ from unittest.mock import patch, mock_open
 import sys
 if sys.platform.startswith("win"):
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    if getattr(sys.stdout, "encoding", "").lower() != "utf-8":
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        except (AttributeError, ValueError):
+            pass
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)
@@ -86,10 +90,10 @@ class TestConfigSettings(unittest.TestCase):
         """Test DATABASE_URL lùi về SQLite khi giá trị rỗng hoặc None"""
         expected_sqlite_path = f"sqlite:///{str(CORE_DIR.parent / 'food_review.db')}"
         
-        settings_empty = Settings(DATABASE_URL="")
+        settings_empty = Settings(DATABASE_URL="", ENABLE_DB_FALLBACK=True)
         self.assertEqual(settings_empty.DATABASE_URL, expected_sqlite_path)
         
-        settings_spaces = Settings(DATABASE_URL="   ")
+        settings_spaces = Settings(DATABASE_URL="   ", ENABLE_DB_FALLBACK=True)
         self.assertEqual(settings_spaces.DATABASE_URL, expected_sqlite_path)
 
     def test_firebase_credentials_json_string(self):
@@ -154,6 +158,13 @@ class TestConfigSettings(unittest.TestCase):
              patch("builtins.open", mock_open(read_data=mock_file_content)):
             settings = Settings(FIREBASE_CREDENTIALS="")
             self.assertEqual(settings.FIREBASE_CREDENTIALS, cred_dict)
+
+    def test_database_url_fallback_disabled(self):
+        """Test DATABASE_URL ném lỗi khi ENABLE_DB_FALLBACK=False và không có DATABASE_URL"""
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError) as context:
+            Settings(DATABASE_URL="", ENABLE_DB_FALLBACK=False)
+        self.assertIn("cơ chế tự động fallback về SQLite đang tắt", str(context.exception))
 
 
 if __name__ == "__main__":

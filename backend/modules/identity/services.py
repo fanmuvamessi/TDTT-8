@@ -55,10 +55,10 @@ def register_user(db: Session, data: RegisterRequest) -> User:
         firebase_uid = user_record.uid
         print(f"[IDENTITY] Đăng ký thành công trên Firebase Auth. UID: {firebase_uid}")
     except Exception as e:
-        print(f"[IDENTITY] Cảnh báo: Không thể tạo tài khoản trên Firebase Auth ({str(e)}).")
-        print("[IDENTITY] Tự động kích hoạt cơ chế Local Mock Fallback cho môi trường phát triển.")
-        # Chế độ mock local: Sử dụng UUID giả dựa trên email
-        firebase_uid = f"mock_{email.replace('@', '_').replace('.', '_')}"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Đăng ký tài khoản trên Firebase Auth thất bại: {str(e)}"
+        )
 
     # 3. Tạo tài khoản trong Database local
     db_user = User(
@@ -108,28 +108,41 @@ def login_user(db: Session, data: LoginRequest) -> dict:
     # 2. Kiểm tra cấu hình Firebase Web API Key
     api_key = settings.FIREBASE_WEB_API_KEY
     
-    if api_key:
-        # --- LUỒNG XÁC THỰC CHÍNH THỨC QUA FIREBASE ---
-        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
-        headers = {"Content-Type": "application/json"}
-        body = json.dumps({
-            "email": username,
-            "password": data.password,
-            "returnSecureToken": True
-        }).encode("utf-8")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cấu hình FIREBASE_WEB_API_KEY bị thiếu. Không thể đăng nhập."
+        )
         
-        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req) as response:
-                res_body = response.read().decode("utf-8")
-                res_json = json.loads(res_body)
-                
-                id_token = res_json.get("idToken")
-                local_id = res_json.get("localId") # firebase_uid
-                
-                # Tìm user tương ứng trong DB local
-                db_user = db.query(User).filter(User.firebase_uid == local_id).first()
-                if not db_user:
+    # --- LUỒNG XÁC THỰC CHÍNH THỨC QUA FIREBASE ---
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    body = json.dumps({
+        "email": username,
+        "password": data.password,
+        "returnSecureToken": True
+    }).encode("utf-8")
+    
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_body = response.read().decode("utf-8")
+            res_json = json.loads(res_body)
+            
+            id_token = res_json.get("idToken")
+            local_id = res_json.get("localId") # firebase_uid
+            
+            # Tìm user tương ứng trong DB local
+            db_user = db.query(User).filter(User.firebase_uid == local_id).first()
+            if not db_user:
+                # Tìm kiếm theo email xem đã tồn tại chưa để liên kết tài khoản
+                db_user = db.query(User).filter(User.email == username).first()
+                if db_user:
+                    db_user.firebase_uid = local_id
+                    db.commit()
+                    db.refresh(db_user)
+                    print(f"[IDENTITY] Đã liên kết tài khoản email '{username}' sẵn có với firebase_uid '{local_id}'.")
+                else:
                     # Trường hợp hy hữu: có trên Firebase nhưng local chưa có -> tự động đồng bộ (auto-provision)
                     db_user = User(
                         firebase_uid=local_id,
@@ -141,66 +154,38 @@ def login_user(db: Session, data: LoginRequest) -> dict:
                     db.commit()
                     db.refresh(db_user)
                     print(f"[IDENTITY] Tự động đồng bộ tài khoản sau khi đăng nhập thành công. UID: {local_id}")
-                
-                return {
-                    "access_token": id_token,
-                    "user": db_user
-                }
-                
-        except urllib.error.HTTPError as e:
-            error_content = e.read().decode("utf-8")
-            try:
-                error_json = json.loads(error_content)
-                error_msg = error_json.get("error", {}).get("message", "")
-            except Exception:
-                error_msg = ""
             
-            # Phân tích một số lỗi phổ biến của Firebase
-            if "EMAIL_NOT_FOUND" in error_msg or "INVALID_PASSWORD" in error_msg or "INVALID_LOGIN_CREDENTIALS" in error_msg:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Email/Số điện thoại hoặc mật khẩu không chính xác."
-                )
-            elif "USER_DISABLED" in error_msg:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Tài khoản này đã bị tạm khóa."
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Xác thực qua Firebase thất bại: {error_msg or error_content}"
-                )
-        except Exception as e:
-            print(f"[IDENTITY] Kết nối Firebase REST API thất bại ({str(e)}). Chuyển sang luồng Mock Fallback.")
-            # Nếu kết nối internet lỗi, tự động lùi về Mock
-            pass
-
-    # --- LUỒNG MOCK FALLBACK (DEVELOPMENT) ---
-    print("[IDENTITY] Chạy chế độ Mock Login / Bỏ qua xác thực Firebase mật khẩu.")
-    # Tìm kiếm user trong DB local
-    db_user = db.query(User).filter(User.email == username).first()
-    if not db_user:
-        # Nếu là số điện thoại và không tìm thấy, thử tìm theo meta_data (phone_number)
-        db_user = db.query(User).filter(User.meta_data["phone_number"].as_string() == username.split("@")[0]).first()
+            return {
+                "access_token": id_token,
+                "user": db_user
+            }
+            
+    except urllib.error.HTTPError as e:
+        error_content = e.read().decode("utf-8")
+        try:
+            error_json = json.loads(error_content)
+            error_msg = error_json.get("error", {}).get("message", "")
+        except Exception:
+            error_msg = ""
         
-    if not db_user:
+        # Phân tích một số lỗi phổ biến của Firebase
+        if "EMAIL_NOT_FOUND" in error_msg or "INVALID_PASSWORD" in error_msg or "INVALID_LOGIN_CREDENTIALS" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email/Số điện thoại hoặc mật khẩu không chính xác."
+            )
+        elif "USER_DISABLED" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tài khoản này đã bị tạm khóa."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Xác thực qua Firebase thất bại: {error_msg or error_content}"
+            )
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tài khoản không tồn tại trên hệ thống local. Vui lòng đăng ký trước."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Kết nối tới Firebase REST API thất bại: {str(e)}"
         )
-    
-    # Để đơn giản trong mock, ta chấp nhận mọi mật khẩu dài từ 6 ký tự
-    if len(data.password) < 6:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Mật khẩu thử nghiệm phải từ 6 ký tự trở lên."
-        )
-        
-    # Tạo mock token dựa trên firebase_uid của user
-    mock_token = f"mock_token_{db_user.firebase_uid}"
-    
-    return {
-        "access_token": mock_token,
-        "user": db_user
-    }

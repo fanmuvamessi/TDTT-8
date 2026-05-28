@@ -4,8 +4,6 @@ import {
   Typography,
   Button,
   Grid,
-  Card,
-  CardMedia,
   Tabs,
   Tab,
   Stack,
@@ -14,275 +12,506 @@ import {
 } from "@mui/material";
 import {
   Settings,
-  Bookmark,
   GridOn,
+  Favorite,
   Share,
-  Star,
-  Fastfood,
-  Verified,
+  FavoriteBorder,
+  PlaceOutlined,
+  CheckCircle,
+  HourglassTopRounded,
+  CancelOutlined,
 } from "@mui/icons-material";
 import { useState } from "react";
 
-// =========================================================================
-// 1. ĐỊNH NGHĨA INTERFACES (CẤU TRÚC DỮ LIỆU KHỚP 100% VỚI BACKEND)
-// =========================================================================
-interface TaggedMerchant {
-  id: number;
-  name: string; // Tên quán ăn từ bảng Merchant
-}
-
-interface VideoItem {
-  id: number;
-  title: string;          // Tiêu đề video ngắn
-  video_url: string;      // Đường dẫn video (.mp4)
-  thumbnail_url: string;  // Ảnh đại diện Video (Hiển thị ở ô lưới Grid)
-  status: string;         // Trạng thái kiểm duyệt (pending, approved)
-  likes_count: number;    // Số lượng Tim (Hiển thị khi hover chuột)
-  tagged_merchant: TaggedMerchant | null; // Quán ăn được gắn thẻ (bảng Merchant)
-}
-
-interface UserProfileMock {
-  id: number;
-  firebase_uid: string;
-  email: string;
-  full_name: string;
-  avatar_url: string;
-  role: string; // reviewer, merchant, admin
-  videos: VideoItem[];    // Mối quan hệ relationship("Video") -> Tab 1
-  liked_videos: VideoItem[]; // Dữ liệu gom từ bảng trung gian relationship("Like") -> Tab 2
-}
+// Import Types từ index.ts và Mock Data từ mock-data.ts
+import { User, Video } from "../../../types";
+import { mockUserProfile } from "../../content/mock-data";
+import { useNavigate } from "react-router-dom";
 
 // =========================================================================
-// 2. TẠO MOCK DATA GIẢ LẬP THEO CHUẨN BACKEND ĐỂ CHẠY THỬ
+// 1. HELPER: Định nghĩa màu sắc và icon cho từng status kiểm duyệt
 // =========================================================================
-const mockBackendProfile: UserProfileMock = {
-  id: 1,
-  firebase_uid: "fb-user-12345",
-  email: "reviewer.foodsaigon@gmail.com",
-  full_name: "Thành Đạt Food Review",
-  avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-  role: "reviewer",
-  // Tab 1: Danh sách video tự đăng (Ứng với trường videos của User)
-  videos: [
-    {
-      id: 101,
-      title: "Phở Thìn Lò Đúc có thực sự ngon như lời đồn?",
-      video_url: "https://example.com/video1.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400",
-      status: "approved",
-      likes_count: 1420,
-      tagged_merchant: { id: 1, name: "Phở Thìn Lò Đúc" }
-    },
-    {
-      id: 102,
-      title: "Trải nghiệm Sushi chuẩn Nhật ngay giữa lòng Sài Gòn",
-      video_url: "https://example.com/video2.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400",
-      status: "approved",
-      likes_count: 850,
-      tagged_merchant: { id: 2, name: "Sushi Tony" }
-    },
-    {
-      id: 103,
-      title: "Xếp hàng 1 tiếng mua Bánh Mì Huỳnh Hoa và cái kết",
-      video_url: "https://example.com/video3.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400",
-      status: "approved",
-      likes_count: 3200,
-      tagged_merchant: { id: 3, name: "Bánh Mì Huỳnh Hoa" }
-    },
-    {
-      id: 104,
-      title: "Lẩu cá kèo miền Tây ăn là ghiền",
-      video_url: "https://example.com/video4.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400",
-      status: "approved",
-      likes_count: 640,
-      tagged_merchant: { id: 4, name: "Lẩu Cá Kèo Bà Huyện" }
-    }
-  ],
-  // Tab 2: Danh sách video đã thích (Lấy thông tin Video thông qua bảng trung gian Like)
-  liked_videos: [
-    {
-      id: 201,
-      title: "Thử thách ăn hết menu Pizza 4P's",
-      video_url: "https://example.com/video5.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400",
-      status: "approved",
-      likes_count: 9800,
-      tagged_merchant: { id: 5, name: "Pizza 4P's - Bến Thành" }
-    },
-    {
-      id: 202,
-      title: "Quán salad siêu ngon cho hội ăn kiêng",
-      video_url: "https://example.com/video6.mp4",
-      thumbnail_url: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400",
-      status: "approved",
-      likes_count: 450,
-      tagged_merchant: { id: 6, name: "Salad Garden" }
-    }
-  ]
+const STATUS_CONFIG = {
+  approved: {
+    color: "#4ade80",
+    label: "Đã duyệt",
+    Icon: CheckCircle,
+  },
+  pending: {
+    color: "#fbbf24",
+    label: "Đang duyệt",
+    Icon: HourglassTopRounded,
+  },
+  rejected: {
+    color: "#f87171",
+    label: "Bị từ chối",
+    Icon: CancelOutlined,
+  },
 };
 
-export default function Profile() {
-  const [currentTab, setCurrentTab] = useState(0);
+const ROLE_LABEL: Record<string, string> = {
+  reviewer: "Reviewer",
+  merchant: "Merchant",
+  admin: "Admin",
+};
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue);
-  };
+function formatLikes(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
 
-  // Chọn mảng video tương ứng tùy theo Tab người dùng bấm vào
-  const displayVideos = currentTab === 0 ? mockBackendProfile.videos : mockBackendProfile.liked_videos;
-
-  // Xử lý tạo username tự động dựa theo full_name từ DB
-  const userHandle = mockBackendProfile.full_name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "");
-    
-  const userInitial = mockBackendProfile.full_name.charAt(0).toUpperCase();
+// =========================================================================
+// 2. SUB-COMPONENT: Ô video trong lưới Tab 1
+// =========================================================================
+function VideoGridCard({ video }: { video: Video }) {
+  const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
+  const cfg = STATUS_CONFIG[video.status] || STATUS_CONFIG.pending;
 
   return (
-    <Box sx={{ maxWidth: 600, mx: "auto", pb: 2, bgcolor: "#121212", minHeight: "100vh", color: "#ffffff" }}>
-      {/* PHẦN THÔNG TIN CÁ NHÂN */}
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-          <Avatar
-            src={mockBackendProfile.avatar_url} // Lấy cột avatar_url từ bảng User
-            sx={{ width: 80, height: 80, bgcolor: "#ff6b35", fontSize: 32, fontWeight: 700 }}
-          >
-            {userInitial}
-          </Avatar>
-          <IconButton sx={{ alignSelf: "flex-start", color: "#ffffff" }}>
-            <Settings />
-          </IconButton>
-        </Box>
+    <Box
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => navigate("/videos", { state: { focusVideoId: video.id } })}
+      sx={{
+        position: "relative",
+        paddingTop: "133%", // Tỉ lệ 3:4 giống short-form video
+        cursor: "pointer",
+        borderRadius: "6px",
+        overflow: "hidden",
+        bgcolor: "#1e1e1e",
+      }}
+    >
+      {/* Ảnh thumbnail */}
+      <Box
+        component="img"
+        src={video.thumbnail_url || ""}
+        alt={video.title}
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transition: "transform 0.3s ease",
+          transform: hovered ? "scale(1.04)" : "scale(1)",
+        }}
+      />
 
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
-            {mockBackendProfile.full_name} {/* Lấy cột full_name từ bảng User */}
+      {/* Overlay tối khi hover */}
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          bgcolor: hovered ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0)",
+          transition: "background-color 0.25s ease",
+        }}
+      />
+
+      {/* Chấm màu trạng thái kiểm duyệt */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 7,
+          right: 7,
+          width: 9,
+          height: 9,
+          borderRadius: "50%",
+          bgcolor: cfg.color,
+          border: "1.5px solid rgba(0,0,0,0.5)",
+          boxShadow: `0 0 5px ${cfg.color}88`,
+        }}
+      />
+
+      {/* Lượt thích + tên quán khi hover */}
+      <Stack
+        alignItems="center"
+        justifyContent="flex-end"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          p: 1,
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 0.2s ease",
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={0.4} sx={{ mb: 0.5 }}>
+          <Favorite sx={{ fontSize: 13, color: "#ff6b35" }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
+            {formatLikes(video.likes_count)}
           </Typography>
-          {mockBackendProfile.role === "reviewer" && (
-            <Verified sx={{ color: "#ff6b35", fontSize: 18 }} />
-          )}
         </Stack>
-        
-        <Typography variant="body2" sx={{ mb: 2, color: "#8892b0" }}>
-          @{userHandle} • Foodie & Reviewer
+        {video.tagged_merchant && (
+          <Typography
+            sx={{
+              fontSize: 10,
+              color: "rgba(255,255,255,0.85)",
+              textAlign: "center",
+              lineHeight: 1.3,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {video.tagged_merchant.name}
+          </Typography>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+// =========================================================================
+// 3. SUB-COMPONENT: Hàng video trong Tab 2 (Đã thích)
+// =========================================================================
+function LikedVideoRow({ video }: { video: Video }) {
+  const navigate = useNavigate();
+  return (
+    <Stack
+      direction="row"
+      spacing={1.5}
+      alignItems="center"
+      onClick={() => navigate("/videos", { state: { focusVideoId: video.id } })}
+      sx={{
+        p: 1.25,
+        borderRadius: "10px",
+        bgcolor: "#1a1a1a",
+        border: "1px solid #2a2a2a",
+        cursor: "pointer",
+        transition: "border-color 0.2s",
+        "&:hover": { borderColor: "#ff6b3560" },
+      }}
+    >
+      {/* Thumbnail nhỏ */}
+      <Box
+        component="img"
+        src={video.thumbnail_url || ""}
+        alt={video.title}
+        sx={{
+          width: 58,
+          height: 78,
+          borderRadius: "6px",
+          objectFit: "cover",
+          flexShrink: 0,
+        }}
+      />
+
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {/* Tiêu đề video */}
+        <Typography
+          sx={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#fff",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            lineHeight: 1.4,
+            mb: 0.75,
+          }}
+        >
+          {video.title}
         </Typography>
 
-        <Typography variant="body2" sx={{ mb: 2, color: "#ffffff", lineHeight: 1.6 }}>
+        {/* Tên quán */}
+        {video.tagged_merchant && (
+          <Stack direction="row" alignItems="center" spacing={0.4} sx={{ mb: 0.6 }}>
+            <PlaceOutlined sx={{ fontSize: 12, color: "#ff6b35" }} />
+            <Typography sx={{ fontSize: 11, color: "#8892b0" }}>
+              {video.tagged_merchant.name}
+            </Typography>
+          </Stack>
+        )}
+
+        {/* Lượt thích */}
+        <Stack direction="row" alignItems="center" spacing={0.4}>
+          <FavoriteBorder sx={{ fontSize: 12, color: "#ff6b35" }} />
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#ff6b35" }}>
+            {formatLikes(video.likes_count)} thích
+          </Typography>
+        </Stack>
+      </Box>
+    </Stack>
+  );
+}
+
+// =========================================================================
+// 4. COMPONENT CHÍNH: ProfilePage
+// =========================================================================
+export default function ProfilePage() {
+  const [currentTab, setCurrentTab] = useState(0);
+  const profile: User = mockUserProfile;
+
+  // Xử lý chuỗi handle an toàn từ full_name từ backend
+  const userHandle = profile.full_name
+    ? profile.full_name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "")
+    : "user";
+
+  const userInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : "?";
+
+  // Tính tổng lượt tim an toàn từ danh sách video
+  const totalLikes = (profile.videos || []).reduce((sum, v) => sum + v.likes_count, 0);
+
+  return (
+    <Box
+      sx={{
+        maxWidth: 680, // Giữ nguyên kích thước to theo yêu cầu trước
+        mx: "auto",
+        pb: 4,
+        bgcolor: "#121212",
+        minHeight: "100vh",
+        color: "#ffffff",
+      }}
+    >
+      {/* ── COVER ── */}
+      <Box
+        sx={{
+          height: 160,
+          background: "linear-gradient(135deg, #7c2d12 0%, #c2410c 45%, #ea580c 75%, #fed7aa 100%)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(0,0,0,0.15) 0%, transparent 50%)",
+          }}
+        />
+      </Box>
+
+      {/* ── AVATAR + NÚT ACTION ── */}
+      <Stack
+        direction="row"
+        alignItems="flex-end"
+        justifyContent="space-between"
+        sx={{
+          px: 2.5,
+          mt: "-48px", // Vị trí đè cover chuẩn xác của avatar cỡ 96
+          position: "relative",
+          zIndex: 2,
+        }}
+      >
+        <Avatar
+          src={profile.avatar_url || ""}
+          sx={{
+            width: 96, // Kích thước avatar to đã sửa đổi trước đó
+            height: 96,
+            bgcolor: "#c2410c",
+            fontSize: 36,
+            fontWeight: 700,
+            border: "3px solid #121212",
+          }}
+        >
+          {userInitial}
+        </Avatar>
+
+        <Stack direction="row" spacing={1} sx={{ pb: 0.5 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Share sx={{ fontSize: 14 }} />}
+            sx={{
+              textTransform: "none",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#fff",
+              borderColor: "#3a3a3a",
+              borderRadius: "8px",
+              px: 1.5,
+              "&:hover": { borderColor: "#ff6b35", bgcolor: "#1e1e1e" },
+            }}
+          >
+            Chia sẻ
+          </Button>
+          <IconButton
+            size="small"
+            sx={{
+              color: "#fff",
+              border: "1px solid #3a3a3a",
+              borderRadius: "8px",
+              "&:hover": { borderColor: "#ff6b35", bgcolor: "#1e1e1e" },
+            }}
+          >
+            <Settings fontSize="small" />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      {/* ── THÔNG TIN CÁ NHÂN ── */}
+      <Box sx={{ px: 2.5, pt: 1.25 }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25 }}>
+          <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
+            {profile.full_name}
+          </Typography>
+          <Chip
+            label={ROLE_LABEL[profile.role] || "Reviewer"}
+            size="small"
+            sx={{
+              height: 20,
+              fontSize: 10,
+              fontWeight: 700,
+              bgcolor: "#431407",
+              color: "#fb923c",
+              border: "1px solid #7c2d12",
+              borderRadius: "6px",
+            }}
+          />
+        </Stack>
+
+        <Typography sx={{ fontSize: 13, color: "#6b7280", mb: 1.25 }}>
+          @{userHandle} · Ho Chi Minh City
+        </Typography>
+
+        <Typography sx={{ fontSize: 13, color: "#d1d5db", lineHeight: 1.6, mb: 1.5 }}>
           🎥 Chuyên săn lùng các món ăn đường phố ngon - bổ - rẻ
           <br />
-          📍 Hoạt động tại Sài Gòn
+          Review thật lòng, không PR.
         </Typography>
 
-        {/* PHẦN THỐNG KÊ SỐ LƯỢNG (Dựa theo độ dài mảng dữ liệu quan hệ) */}
-        <Stack direction="row" spacing={3} sx={{ mb: 3 }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
-              {mockBackendProfile.videos.length} {/* Tổng số Video tự đăng */}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#8892b0" }}>
-              Bài viết
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#ffffff" }}>
-              {mockBackendProfile.liked_videos.length} {/* Tổng số Video đã thích */}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#8892b0" }}>
-              Đã thích
-            </Typography>
-          </Box>
-        </Stack>
+        {/* Nút chỉnh sửa */}
+        <Button
+          fullWidth
+          variant="outlined"
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            color: "#fff",
+            borderColor: "#3a3a3a",
+            borderRadius: "10px",
+            mb: 2,
+            "&:hover": { borderColor: "#ff6b35", bgcolor: "#1e1e1e" },
+          }}
+        >
+          Chỉnh sửa trang cá nhân
+        </Button>
 
-        <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
-          <Button variant="contained" fullWidth sx={{ bgcolor: "#ff6b35", "&:hover": { bgcolor: "#e55a2b" }, textTransform: "none", fontWeight: 600, color: "#ffffff" }}>
-            Chỉnh sửa trang cá nhân
-          </Button>
-          <Button variant="outlined" sx={{ minWidth: 44, borderColor: "#2d2d2d", color: "#ffffff", "&:hover": { borderColor: "#ff6b35", bgcolor: "#1a1a1a" } }}>
-            <Share />
-          </Button>
-        </Stack>
-
-        <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", gap: 1 }}>
-          <Chip label="Ẩm thực Việt" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
-          <Chip label="Review" size="small" sx={{ bgcolor: "#2d2d2d", color: "#ffffff", fontWeight: 500 }} />
+        {/* ── THỐNG KÊ: số video + tổng lượt thích ── */}
+        <Stack
+          direction="row"
+          divider={<Box sx={{ width: "1px", bgcolor: "#2a2a2a", alignSelf: "stretch" }} />}
+          sx={{
+            bgcolor: "#1a1a1a",
+            borderRadius: "12px",
+            border: "1px solid #2a2a2a",
+            mb: 2,
+            overflow: "hidden",
+          }}
+        >
+          <Box sx={{ flex: 1, py: 1.5, textAlign: "center" }}>
+            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
+              {profile.videos ? profile.videos.length : 0}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: "#6b7280", mt: 0.25 }}>Video</Typography>
+          </Box>
+          <Box sx={{ flex: 1, py: 1.5, textAlign: "center" }}>
+            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
+              {profile.liked_videos ? profile.liked_videos.length : 0}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: "#6b7280", mt: 0.25 }}>Đã thích</Typography>
+          </Box>
+          <Box sx={{ flex: 1, py: 1.5, textAlign: "center" }}>
+            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#ff6b35" }}>
+              {formatLikes(totalLikes)}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: "#6b7280", mt: 0.25 }}>Lượt tim</Typography>
+          </Box>
         </Stack>
       </Box>
 
-      {/* THANH TABS CHUYỂN ĐỔI NỘI DUNG */}
-      <Box sx={{ borderBottom: 1, borderColor: "#2d2d2d" }}>
+      {/* ── TABS ── */}
+      <Box sx={{ borderBottom: "1px solid #2a2a2a", px: 0 }}>
         <Tabs
           value={currentTab}
-          onChange={handleTabChange}
+          onChange={(_, v) => setCurrentTab(v)}
           variant="fullWidth"
           sx={{
-            "& .MuiTab-root": { color: "#ffffff" },
+            minHeight: 44,
+            "& .MuiTab-root": {
+              color: "#6b7280",
+              fontSize: 12,
+              fontWeight: 600,
+              textTransform: "none",
+              minHeight: 44,
+              gap: "6px",
+            },
             "& .Mui-selected": { color: "#ff6b35 !important" },
-            "& .MuiTabs-indicator": { bgcolor: "#ff6b35" },
+            "& .MuiTabs-indicator": { bgcolor: "#ff6b35", height: 2 },
           }}
         >
-          <Tab icon={<GridOn />} label="Bài viết" />
-          <Tab icon={<Bookmark />} label="Đã thích" />
+          <Tab icon={<GridOn sx={{ fontSize: 16 }} />} iconPosition="start" label="Video của tôi" />
+          <Tab icon={<Favorite sx={{ fontSize: 16 }} />} iconPosition="start" label="Đã thích" />
         </Tabs>
       </Box>
 
-      {/* Ô LƯỚI GRID HIỂN THỊ HÌNH ẢNH VIDEO NGẮN */}
-      <Box sx={{ p: 1 }}>
-        {displayVideos.length > 0 ? (
-          <Grid container spacing={0.5}>
-            {displayVideos.map((video) => (
-              <Grid size={{ xs: 4 }} key={video.id}> 
-                <Card 
-                  sx={{ 
-                    position: "relative", 
-                    paddingTop: "100%", 
-                    cursor: "pointer", 
-                    bgcolor: "#1e1e1e", 
-                    border: "1px solid #2d2d2d",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                    "&:hover .post-overlay": { bgcolor: "rgba(255, 107, 53, 0.45)" },
-                    "&:hover .post-info": { opacity: 1 }
-                  }}
-                >
-                  <CardMedia
-                    component="img"
-                    image={video.thumbnail_url} // Trích xuất trường thumbnail_url từ bảng Video
-                    alt={video.title}
-                    sx={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                  
-                  <Box className="post-overlay" sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, bgcolor: "rgba(0,0,0,0)", transition: "all 0.25s ease" }} />
+      {/* ── TAB 1: Lưới video đã đăng ── */}
+      {currentTab === 0 && (
+        <Box sx={{ p: 1.5 }}>
+          {profile.videos && profile.videos.length > 0 ? (
+            <Grid container spacing={0.5}>
+              {profile.videos.map((video) => (
+                <Grid size={{ xs: 4 }} key={video.id}>
+                  <VideoGridCard video={video} />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <GridOn sx={{ fontSize: 48, color: "#2a2a2a", mb: 1.5 }} />
+              <Typography sx={{ color: "#6b7280", fontSize: 14 }}>
+                Chưa có video nào được đăng
+              </Typography>
+            </Box>
+          )}
 
-                  {/* PHẦN HIỂN THỊ THÔNG TIN KHI DI CHUỘT VÀO (HOVER) */}
-                  <Stack className="post-info" justifyContent="center" alignItems="center" spacing={0.5} sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, p: 1, opacity: 0, transition: "opacity 0.2s ease", textAlign: "center" }}>
-                    <Stack direction="row" alignItems="center" spacing={0.2} sx={{ bgcolor: "#121212", px: 0.8, py: 0.3, borderRadius: 1.5 }}>
-                      <Star sx={{ color: "#ff6b35", fontSize: 14 }} />
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: "#ffffff" }}>
-                        {video.likes_count >= 1000 ? `${(video.likes_count/1000).toFixed(1)}k` : video.likes_count} Tim {/* Số lượng likes_count từ bảng Video */}
-                      </Typography>
-                    </Stack>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#ffffff", fontSize: 11, textShadow: "0px 2px 4px rgba(0,0,0,0.8)", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                      {video.tagged_merchant?.name || "Chưa gắn vị trí"} {/* Tên nhà hàng lấy từ mối quan hệ tagged_merchant */}
-                    </Typography>
-                  </Stack>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box sx={{ textAlign: "center", py: 8 }}>
-            <Fastfood sx={{ fontSize: 64, color: "#2d2d2d", mb: 2 }} />
-            <Typography variant="h6" sx={{ color: "#8892b0" }}>
-              Chưa có nội dung hiển thị
-            </Typography>
-          </Box>
-        )}
-      </Box>
+          {/* Chú thích trạng thái kiểm duyệt */}
+          <Stack direction="row" spacing={2} sx={{ mt: 1.5, px: 0.5 }}>
+            {(Object.entries(STATUS_CONFIG) as [Video["status"], typeof STATUS_CONFIG["approved"]][]).map(
+              ([key, cfg]) => (
+                <Stack key={key} direction="row" alignItems="center" spacing={0.5}>
+                  <Box
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      bgcolor: cfg.color,
+                    }}
+                  />
+                  <Typography sx={{ fontSize: 10, color: "#6b7280" }}>{cfg.label}</Typography>
+                </Stack>
+              )
+            )}
+          </Stack>
+        </Box>
+      )}
+
+      {/* ── TAB 2: Danh sách video đã thích ── */}
+      {currentTab === 1 && (
+        <Stack spacing={1} sx={{ p: 1.5 }}>
+          {profile.liked_videos && profile.liked_videos.length > 0 ? (
+            profile.liked_videos.map((video) => (
+              <LikedVideoRow key={video.id} video={video} />
+            ))
+          ) : (
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <FavoriteBorder sx={{ fontSize: 48, color: "#2a2a2a", mb: 1.5 }} />
+              <Typography sx={{ color: "#6b7280", fontSize: 14 }}>
+                Chưa thích video nào
+              </Typography>
+            </Box>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }

@@ -5,6 +5,7 @@ import CommentSection from "../components/CommentSection";
 import VideoCard from "../components/VideoCard";
 import { ContentServices } from "../content-services";
 import { Video } from "../../../types"; // Thay đổi kiểu dữ liệu tương thích
+import { useLocation } from "react-router-dom";
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([]); // Đổi sang cấu trúc Video mới
@@ -16,13 +17,26 @@ export default function VideosPage() {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({}); // Đổi string -> number
+  const location = useLocation();
+  const state = location.state as { focusVideoId?: number } | null;
 
   useEffect(() => {
     ContentServices.getShortVideos().then((data) => {
       const typedData = data as unknown as Video[];
       setVideos(typedData);
       if (typedData.length > 0) {
-        setTimeout(() => handleScrollOrLoad(typedData[0].id), 100);
+        // Kiểm tra xem có ID truyền từ Profile sang không, nếu không có mới lấy ID đầu tiên
+        const targetId = state?.focusVideoId || typedData[0].id;
+        setTimeout(() => handleScrollOrLoad(targetId), 100);
+        // Đoạn code hỗ trợ cuộn màn hình container đến phần tử video được chọn
+        if (state?.focusVideoId) {
+          setTimeout(() => {
+            const index = typedData.findIndex(v => v.id === state.focusVideoId);
+            if (index !== -1 && containerRef.current) {
+              containerRef.current.scrollTop = index * containerRef.current.clientHeight;
+            }
+          }, 150);
+        }
       }
     });
 
@@ -30,7 +44,7 @@ export default function VideosPage() {
     return () => {
       videoRefs.current = {};
     };
-  }, []);
+  }, [state?.focusVideoId]);
 
   const handleScrollOrLoad = (targetId: number) => { // Đổi sang number
     Object.keys(videoRefs.current).forEach((id) => {

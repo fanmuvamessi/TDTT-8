@@ -167,6 +167,7 @@ export const mockVideos: Video[] = [
 ];
 
 
+
 // =========================================================================
 // 5. CẤU HÌNH LIÊN KẾT ĐỐI TƯỢNG PROFILE CHO USER HIỆN TẠI
 // =========================================================================
@@ -174,26 +175,26 @@ export const mockUserProfile: User = {
   ...mockUserReviewer,
   videos: [
     {
-      id: 601,
-      title: "Phở Thìn Lò Đúc có thực sự ngon như lời đồn ở Sài Gòn?",
+      id: 501,
+      title: "Món bún bò chuẩn vị Huế có một không hai ngay gần cơ sở Nguyễn Văn Cừ",
       video_url: "https://assets.mixkit.co/videos/preview/mixkit-cooking-in-a-modern-kitchen-41876-large.mp4",
-      description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
-      thumbnail_url: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400",
+      thumbnail_url: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500",
+      description: "Nước dùng đậm đà, thịt bò mềm và topping siêu chất lượng mng ơiii!",
       status: "approved",
-      likes_count: 1420,
+      likes_count: 120,
       reviewer_id: 1,
       tagged_merchant_id: 1,
       created_at: new Date().toISOString(),
       tagged_merchant: { id: 1, name: "Bún Bò Huế US - Nguyễn Văn Cừ" }
     },
     {
-      id: 602,
-      title: "Xếp hàng 1 tiếng mua Bánh Mì ăn thử và cái kết đắng lòng",
+      id: 503,
+      title: "Hàng bánh mì xá xíu, xíu mại đêm đỉnh chóp lề đường mở tới 2h sáng",
       video_url: "https://assets.mixkit.co/videos/preview/mixkit-gourmet-burger-preparation-41566-large.mp4",
-      description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
-      thumbnail_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400",
-      status: "pending",
-      likes_count: 0,
+      thumbnail_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500",
+      description: "Chỗ cứu đói quen thuộc của mình mỗi lần học muộn hoặc đi chơi về trễ.",
+      status: "approved",
+      likes_count: 243,
       reviewer_id: 1,
       tagged_merchant_id: 3,
       created_at: new Date().toISOString(),
@@ -216,3 +217,4 @@ export const mockUserProfile: User = {
     }
   ]
 };
+

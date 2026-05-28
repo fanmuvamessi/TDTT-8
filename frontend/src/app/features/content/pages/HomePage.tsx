@@ -31,7 +31,7 @@ export default function HomePage() {
   const filteredMerchants = merchants.filter((m) =>
     query === "" || 
     m.name.toLowerCase().includes(query.toLowerCase()) ||
-    m.menu?.some((item: any) => item.name.toLowerCase().includes(query.toLowerCase()))
+    m.menus?.some((item: any) => item.dish_name.toLowerCase().includes(query.toLowerCase()))
   );
 
   return (

@@ -58,7 +58,7 @@ export default function MapPage() {
         {
           enableHighAccuracy: true, 
           timeout: 10000,           
-          maximumAge: 0             
+          maximumAge: 0              
         }
       );
     } else {
@@ -70,7 +70,7 @@ export default function MapPage() {
   const filteredShops = useMemo(() => {
     return mockHomeMerchants.filter(shop => 
       shop.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      calculateDistance(center[0], center[1], shop.lat, shop.lng) <= radius
+      calculateDistance(center[0], center[1], Number(shop.latitude || (shop as any).lat), Number(shop.longitude || (shop as any).lng)) <= radius
     );
   }, [radius, searchTerm, center]);
 
@@ -96,9 +96,19 @@ export default function MapPage() {
   // Xử lý khi người dùng chọn một quán ăn từ danh sách gợi ý
   const handleSelectShop = (shop: typeof mockHomeMerchants[0]) => {
     setSearchTerm(shop.name); // Điền tên quán vào thanh tìm kiếm
-    setCenter([shop.lat, shop.lng]); // Đưa bản đồ bay tới quán được chọn
+    setCenter([Number(shop.latitude || (shop as any).lat), Number(shop.longitude || (shop as any).lng)]); // Đưa bản đồ bay tới quán được chọn
     setShowSuggestions(false); // Ẩn danh sách gợi ý đi
   };
+
+  // Tạo mảng trung gian thích ứng tương thích ngược với kiểu dữ liệu của MapView cũ
+  const mappedShopsForMap = useMemo(() => {
+    return filteredShops.map((shop) => ({
+      id: String(shop.id),
+      name: shop.name,
+      lat: Number(shop.latitude || (shop as any).lat),
+      lng: Number(shop.longitude || (shop as any).lng),
+    }));
+  }, [filteredShops]);
 
   return (
     <Box 
@@ -126,10 +136,10 @@ export default function MapPage() {
           "& .leaflet-container": { height: "100% !important", width: "100% !important" }
         }}
       >
-        <MapView shops={filteredShops} center={center} radius={radius} />
+        <MapView shops={mappedShopsForMap} center={center} radius={radius} />
       </Box>
 
-      {/* 2. THANH TÌM KIẾM PHÍA TRÊN VÀ KHỐI GỢI Ý (Đã cập nhật) */}
+      {/* 2. THANH TÌM KIẾM PHÍA TRÊN VÀ KHỐI GỢI Ý */}
       <Box 
         ref={searchRef}
         sx={{ 
@@ -139,7 +149,7 @@ export default function MapPage() {
           right: 0, 
           px: 2,
           pl: "120px", 
-          zIndex: 1200, // Đẩy z-index cao hơn một chút để danh sách gợi ý đè lên trên các UI khác
+          zIndex: 1200, 
         }}
       >
         <TextField
@@ -150,9 +160,9 @@ export default function MapPage() {
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
-            setShowSuggestions(true); // Hiện gợi ý khi người dùng gõ phím
+            setShowSuggestions(true); 
           }}
-          onFocus={() => setShowSuggestions(true)} // Hiện gợi ý khi nhấp chuột vào ô input
+          onFocus={() => setShowSuggestions(true)} 
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -174,7 +184,7 @@ export default function MapPage() {
           }}
         />
 
-        {/* BOX DANH SÁCH GỢI Ý - Xuất hiện ngay phía dưới thanh tìm kiếm khi có kết quả phù hợp */}
+        {/* BOX DANH SÁCH GỢI Ý */}
         {showSuggestions && suggestedShops.length > 0 && (
           <Box
             sx={{
@@ -198,7 +208,7 @@ export default function MapPage() {
                     py: 1.5,
                     px: 2,
                     borderBottom: "1px solid #f1f5f9",
-                    "&:last-child": { borderBottom: "none" },
+                    "& :last-child": { borderBottom: "none" },
                     "&:hover": {
                       bgcolor: "#fff7ed",
                       "& .MuiTypography-root": { color: "#ff6b35" }
@@ -214,9 +224,9 @@ export default function MapPage() {
                       variant: "body2",
                       fontWeight: 700,
                       color: "#0f172a",
-                      sx: { transition: "color 0.2s ease" } // ĐÃ SỬA: Đưa transition vào thẻ sx hợp lệ
+                      sx: { transition: "color 0.2s ease" }
                     }}
-                    secondary={`📍 Tọa độ: ${shop.lat.toFixed(3)}, ${shop.lng.toFixed(3)}`}
+                    secondary={`📍 Tọa độ: ${Number(shop.latitude || (shop as any).lat).toFixed(3)}, ${Number(shop.longitude || (shop as any).lng).toFixed(3)}`}
                     secondaryTypographyProps={{
                       variant: "caption",
                       color: "#64748b"
@@ -320,6 +330,7 @@ export default function MapPage() {
         <Stack 
           direction="row" 
           spacing={2} 
+          alignItems="flex-end" // Đảm bảo cố định đáy của dòng flex, không làm các card khác nhảy theo
           sx={{ 
             overflowX: "auto", 
             pb: 0.5,
@@ -328,11 +339,11 @@ export default function MapPage() {
           }}
         >
           {filteredShops.map((shop) => {
-            const currentDistance = calculateDistance(center[0], center[1], shop.lat, shop.lng);
+            const currentDistance = calculateDistance(center[0], center[1], Number(shop.latitude || (shop as any).lat), Number(shop.longitude || (shop as any).lng));
             return (
               <Card 
                 key={shop.id}
-                onClick={() => setCenter([shop.lat, shop.lng])} 
+                onClick={() => setCenter([Number(shop.latitude || (shop as any).lat), Number(shop.longitude || (shop as any).lng)])} 
                 sx={{ 
                   minWidth: 180, 
                   maxWidth: 180, 
@@ -342,10 +353,11 @@ export default function MapPage() {
                   border: "1px solid #e2e8f0",
                   boxShadow: "0px 6px 20px rgba(0,0,0,0.06)",
                   cursor: "pointer",
-                  transition: "transform 0.2s ease", 
-                  "&:hover": {
+                  transition: "transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease", // Đưa hiệu ứng mượt mà ra ngoài khối cha
+                  "&:hover": { // ĐÃ SỬA: Viết liền không khoảng cách để hover ăn vào toàn bộ Card thay vì chữ con bên trong
                     transform: "translateY(-4px)",
-                    borderColor: "#ff6b35"
+                    borderColor: "#ff6b35",
+                    boxShadow: "0px 10px 25px rgba(255,107,53,0.15)"
                   }
                 }}
               >
@@ -362,7 +374,7 @@ export default function MapPage() {
                     />
                   </Stack>
                   <Typography variant="caption" sx={{ color: "#64748b", display: "flex", alignItems: "center", gap: 0.5, fontSize: 10 }}>
-                    📍 {shop.lat.toFixed(3)}, {shop.lng.toFixed(3)}
+                    📍 {Number(shop.latitude || (shop as any).lat).toFixed(3)}, {Number(shop.longitude || (shop as any).lng).toFixed(3)}
                   </Typography>
                 </CardContent>
               </Card>

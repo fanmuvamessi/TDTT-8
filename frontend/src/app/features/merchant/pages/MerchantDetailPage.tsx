@@ -9,8 +9,8 @@ export default function MerchantDetailPage() {
   const { id } = useParams(); // Lấy id từ URL
   const navigate = useNavigate();
 
-  // Tìm quán ăn khớp với ID từ URL
-  const merchant = mockHomeMerchants.find((m) => m.id === id);
+  // Tìm quán ăn khớp với ID từ URL (chuyển đổi id sang kiểu number để khớp chuẩn xác)
+  const merchant = mockHomeMerchants.find((m) => m.id === Number(id));
 
   // Xử lý trường hợp không tìm thấy quán
   if (!merchant) {
@@ -25,14 +25,14 @@ export default function MerchantDetailPage() {
   const handleAddressClick = () => {
     // Điều hướng về trang map (đường dẫn tùy thuộc vào Router của bạn, thường là "/map" hoặc "/discovery")
     // Đồng thời truyền tọa độ lat, lng qua state để bản đồ tự động focus vào quán
-    navigate("/map", { state: { lat: merchant.lat, lng: merchant.lng, name: merchant.name } });
+    navigate("/map", { state: { lat: merchant.latitude, lng: merchant.longitude, name: merchant.name } });
   };
 
   return (
     <Box sx={{ bgcolor: "#000", minHeight: "100vh", color: "#fff", pb: 4 }}>
       {/* 1. Phần ảnh bìa */}
       <Box sx={{ position: "relative", height: 280, width: "100%" }}>
-        <CardMedia component="img" image={merchant.coverImageUrl} sx={{ height: "100%", objectFit: "cover" }} />
+        <CardMedia component="img" image="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800" sx={{ height: "100%", objectFit: "cover" }} />
         
         <IconButton onClick={() => navigate(-1)} sx={{ position: "absolute", top: 16, left: 16, color: "white", bgcolor: "rgba(0,0,0,0.3)" }}>
           <ArrowBack />
@@ -68,7 +68,7 @@ export default function MerchantDetailPage() {
           </Stack>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ color: "#ff6b35" }}>
             <DirectionsRun fontSize="small" />
-            <Typography variant="body2" fontWeight={600}>{merchant.distance}</Typography>
+            <Typography variant="body2" fontWeight={600}>{(merchant as any).distance || "0.2 km"}</Typography>
           </Stack>
         </Stack>
 
@@ -77,12 +77,12 @@ export default function MerchantDetailPage() {
         {/* 3. List Menu */}
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Thực đơn</Typography>
         <Stack spacing={2}>
-          {merchant.menu && merchant.menu.length > 0 ? (
-            merchant.menu.map((item) => (
+          {merchant.menus && merchant.menus.length > 0 ? (
+            merchant.menus.map((item) => (
               <Card key={item.id} sx={{ display: "flex", bgcolor: "#111", borderRadius: 3, border: "1px solid #222" }}>
-                <CardMedia component="img" image={item.imageUrl} sx={{ width: 80, height: 80 }} />
+                <CardMedia component="img" image="https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=150" sx={{ width: 80, height: 80 }} />
                 <CardContent sx={{ py: 1.5 }}>
-                  <Typography variant="subtitle1" fontWeight={600} color="#fff">{item.name}</Typography>
+                  <Typography variant="subtitle1" fontWeight={600} color="#fff">{item.dish_name}</Typography>
                   <Typography variant="body2" color="#ff6b35" fontWeight={700}>{item.price.toLocaleString()}đ</Typography>
                 </CardContent>
               </Card>

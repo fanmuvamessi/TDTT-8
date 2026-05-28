@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 
-// 🌟 1. Cập nhật Interface: Thêm videoId (chấp nhận cả string hoặc null)
 interface CommentSectionProps {
   isOpen: boolean;
   onClose: () => void;
-  videoId: string | null; 
+  videoId: number | null; // Cập nhật kiểu dữ liệu string -> number | null
 }
 
 export default function CommentSection({ isOpen, onClose, videoId }: CommentSectionProps) {
@@ -19,8 +18,7 @@ export default function CommentSection({ isOpen, onClose, videoId }: CommentSect
   // Theo dõi khi người dùng đổi video thì reset hoặc fetch lại bình luận của video đó
   useEffect(() => {
     if (videoId) {
-      console.log(`Đang tải bình luận mới cho video: ${videoId}`);
-      // Ví dụ: ContentServices.getCommentsByVideo(videoId).then(data => setComments(data));
+      console.log(`Đang tải bình luận mới cho video số: ${videoId}`);
     }
   }, [videoId]);
 
@@ -68,7 +66,6 @@ export default function CommentSection({ isOpen, onClose, videoId }: CommentSect
         <input
           type="text"
           value={newComment}
-          // 🌟 ĐÃ SỬA LỖI: Thêm setNewComment để gõ được văn bản bình thường
           onChange={(e) => setNewComment(e.target.value)} 
           placeholder="Thêm bình luận công khai..."
           className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#262626] text-white rounded-xl outline-none text-[11px] placeholder-gray-600 focus:bg-[#1f1f1f] focus:border-[#ff6b35] transition-all"

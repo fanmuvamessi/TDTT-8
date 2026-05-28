@@ -1,53 +1,128 @@
-// Định nghĩa kiểu dữ liệu cơ bản dùng chung
+// =========================================================================
+// ĐỊNH NGHĨA CẤU TRÚC TYPE FRONTEND (ĐỒNG BỘ 100% VỚI ALL_MODELS CỦA BACKEND)
+// =========================================================================
+
+/**
+ * Vai trò của người dùng trong hệ thống
+ * Đồng bộ với: role = Column(String, default="reviewer")
+ */
+export type UserRole = "admin" | "merchant" | "reviewer";
+
+/**
+ * Trạng thái kiểm duyệt nội dung Video
+ * Đồng bộ với: status = Column(String, default="pending")
+ */
+export type VideoStatus = "pending" | "approved" | "rejected";
+
+/**
+ * Interface đại diện cho bảng 'users' ở Backend
+ */
 export interface User {
-  id: string;
-  name: string;
-  avatarUrl: string;
+  id: number;
+  firebase_uid: string; // Đồng bộ từ Firebase Auth, siết chặt định danh
+  email: string | null; // Để nullable vì hệ thống hỗ trợ đăng nhập qua SĐT (OTP)
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  meta_data?: Record<string, any> | null; // Lưu siêu dữ liệu linh hoạt cấu hình thiết bị/token
+  created_at: string;
+  updated_at: string;
+
+  // Relationships (Dữ liệu quan hệ được Backend gộp sẵn khi gọi API Profile)
   merchants?: Merchant[];
+  videos?: Video[];          // Phục vụ Tab 1: Danh sách video tự đăng
+  liked_videos?: Video[];    // Phục vụ Tab 2: Danh sách video đã thích (Backend bóc tách từ bảng 'likes')
 }
 
-// 1. Dữ liệu Video (Dùng cho khối Review)
-export interface ExtendedShortVideo {
-  id: string;
-  author: User;
-  videoUrl: string;
-  thumbnail_url: string; // Thêm trường này để hiển thị ảnh bìa
-  description: string;
-  likes: number;
-  commentsCount: number;
-  rating: number; 
-  merchantName: string;
-  merchantId: string;
-  tags: string[];
-  views?: string;
-}
-
-// 2. Dữ liệu Quán ăn (Dùng cho khối Gần bạn)
+/**
+ * Interface đại diện cho bảng 'merchants' (Quán ăn / Nhà hàng)
+ */
 export interface Merchant {
-  id: string;
+  id: number;
   name: string;
-  address: string;
-  distance: string;     // Thêm khoảng cách (VD: "500m")
-  rating_avg: number;   // Sửa tên cho đồng nhất với database/API
-  coverImageUrl: string;
-  menu?: MenuItem[];    // Để optional vì có thể chưa cần load ngay
-  owner?: User;
-  lat: number;
-  lng: number;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  description: string | null;
+  rating_avg: number;
+  owner_id: number;
+  is_active: boolean; // Tránh lỗi xóa cứng làm mất dữ liệu liên quan
+  created_at: string;
+
+  // Relationships
+  menus?: Menu[];
+  videos?: Video[];
+  campaigns?: Campaign[];
 }
 
-export interface MenuItem {
-  id: string;
-  name: string;
+/**
+ * Interface đại diện cho bảng 'menus' (Thực đơn món ăn của quán)
+ */
+export interface Menu {
+  id: number;
+  merchant_id: number;
+  dish_name: string;
   price: number;
-  imageUrl: string;
+  is_available: boolean;
+  created_at: string;
 }
 
-// 3. Dữ liệu Chiến dịch (Dùng cho khối Quảng cáo)
-export interface Campaign {
-  id: string;
+/**
+ * Interface đại diện cho bảng 'videos' (Nội dung cốt lõi của ứng dụng - Bài đăng ngắn)
+ */
+export interface Video {
+  id: number;
   title: string;
-  thumbnail_url: string;
-  link: string;
-  is_sponsored: boolean;
+  video_url: string;
+  thumbnail_url: string | null; // Ảnh đại diện hiển thị ở Grid trang Profile
+  description: string | null;
+  status: VideoStatus;          // Dùng để hiển thị nhãn "Đang duyệt" cho Reviewer biết
+  likes_count: number;          // Hiện số tim khi hover chuột vào hình ảnh
+  reviewer_id: number;
+  tagged_merchant_id: number | null; // ID quán ăn được gắn thẻ trong video
+  created_at: string;
+
+  // Mối quan hệ lồng nhau phục vụ hiển thị tên quán kèm theo video
+  tagged_merchant?: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+/**
+ * Interface đại diện cho bảng trung gian 'likes'
+ */
+export interface Like {
+  id: number;
+  user_id: number;
+  video_id: number;
+  created_at: string;
+}
+
+/**
+ * Interface đại diện cho bảng 'comments' (Bình luận dưới video)
+ */
+export interface Comment {
+  id: number;
+  user_id: number;
+  video_id: number;
+  content: string;
+  parent_id: number | null;
+  created_at: string;
+  replies?: Comment[];
+}
+
+/**
+ * Interface đại diện cho bảng 'campaigns' (Chiến dịch quảng cáo video của Merchant)
+ */
+export interface Campaign {
+  id: number;
+  merchant_id: number;
+  title: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  is_active: boolean;
+  impressions_count: number;
+  clicks_count: number;
+  created_at: string;
 }

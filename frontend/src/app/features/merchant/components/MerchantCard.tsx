@@ -10,7 +10,7 @@ interface Props {
 
 export const MerchantCard = ({ merchant, onClick }: Props) => (
   <Card onClick={onClick} sx={{ borderRadius: 4, cursor: "pointer", border: "1px solid #e2e8f0" }}>
-    <CardMedia component="img" height="180" image={merchant.coverImageUrl} alt={merchant.name} />
+    <CardMedia component="img" height="180" image="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600" alt={merchant.name} />
     <CardContent>
       <Typography variant="h6" sx={{ fontWeight: 700 }}>{merchant.name}</Typography>
       <Stack direction="row" alignItems="center" sx={{ color: "text.secondary", mt: 1 }}>

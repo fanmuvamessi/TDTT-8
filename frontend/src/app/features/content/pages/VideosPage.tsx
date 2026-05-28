@@ -4,24 +4,25 @@ import { VolumeUp, VolumeOff } from "@mui/icons-material";
 import CommentSection from "../components/CommentSection";
 import VideoCard from "../components/VideoCard";
 import { ContentServices } from "../content-services";
-import { ExtendedShortVideo } from "../../../types";
+import { Video } from "../../../types"; // Thay đổi kiểu dữ liệu tương thích
 
 export default function VideosPage() {
-  const [videos, setVideos] = useState<ExtendedShortVideo[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]); // Đổi sang cấu trúc Video mới
   const [isCommentOpen, setIsCommentOpen] = useState(false);
-  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  const [likedVideos, setLikedVideos] = useState<Set<string>>(new Set());
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const [activeVideoId, setActiveVideoId] = useState<number | null>(null); // Đổi string -> number
+  const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set());   // Đổi string -> number
+  const [playingVideoId, setPlayingVideoId] = useState<number | null>(null); // Đổi string -> number
   const [isMuted, setIsMuted] = useState(true);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+  const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({}); // Đổi string -> number
 
   useEffect(() => {
     ContentServices.getShortVideos().then((data) => {
-      setVideos(data);
-      if (data.length > 0) {
-        setTimeout(() => handleScrollOrLoad(data[0].id), 100);
+      const typedData = data as unknown as Video[];
+      setVideos(typedData);
+      if (typedData.length > 0) {
+        setTimeout(() => handleScrollOrLoad(typedData[0].id), 100);
       }
     });
 
@@ -31,11 +32,11 @@ export default function VideosPage() {
     };
   }, []);
 
-  const handleScrollOrLoad = (targetId: string) => {
+  const handleScrollOrLoad = (targetId: number) => { // Đổi sang number
     Object.keys(videoRefs.current).forEach((id) => {
-      const vid = videoRefs.current[id];
+      const vid = videoRefs.current[Number(id)];
       if (vid) {
-        if (id === targetId) {
+        if (Number(id) === targetId) {
           vid.muted = isMuted;
           vid.play().then(() => setPlayingVideoId(targetId)).catch(() => {});
         } else {
@@ -55,7 +56,7 @@ export default function VideosPage() {
     }
   };
 
-  const handleVideoClick = (id: string) => {
+  const handleVideoClick = (id: number) => { // Đổi sang number
     const videoElement = videoRefs.current[id];
     if (!videoElement) return;
     playingVideoId === id ? videoElement.pause() : videoElement.play().catch(() => {});
@@ -71,18 +72,13 @@ export default function VideosPage() {
     }
   };
 
-  const handleToggleLike = (id: string) => {
-  setLikedVideos((prev) => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
-};
-
-const handleOpenComments = (id: string) => {
-  setActiveVideoId(id);
-  setIsCommentOpen(true);
-};
+  const handleToggleLike = (id: number) => { // Đổi sang number
+    setLikedVideos((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   return (
     <Box sx={{ width: "100%", height: "calc(100vh - 64px)", display: "flex", justifyContent: "center", bgcolor: "#000", position: "relative" }}>
@@ -107,7 +103,6 @@ const handleOpenComments = (id: string) => {
           }}
         >
           {videos.map((video) => (
-            // Trong VideosPage.tsx
             <VideoCard 
               key={video.id}
               video={video}
@@ -116,7 +111,7 @@ const handleOpenComments = (id: string) => {
               isMuted={isMuted}
               videoRef={(el) => { videoRefs.current[video.id] = el; }}
               onVideoClick={handleVideoClick}
-              onToggleLike={() => handleToggleLike(video.id)} // Truyền id vào
+              onToggleLike={() => handleToggleLike(video.id)}
               onOpenComments={() => { setActiveVideoId(video.id); setIsCommentOpen(true); }}
             />
           ))}

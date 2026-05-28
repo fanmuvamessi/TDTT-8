@@ -57,13 +57,20 @@ export default function MapView({ shops, center, radius }: MapViewProps) {
 
       {/* Marker đánh dấu chính xác vị trí thực tế của người dùng */}
       <Marker position={center}>
-        <Popup><strong>Vị trí của bạn</strong></Popup>
+        <Popup>Vị trí ghim tìm kiếm hiện tại của bạn</Popup>
       </Marker>
 
-      {/* SỬA TẠI ĐÂY: Đã xóa bớt cặp dấu ngoặc nhọn thừa ở comment */}
+      {/* Vòng lặp kết xuất tập hợp các tọa độ ghim (Marker) của các quán ăn gần sát vách */}
       {shops.map((shop) => (
         <Marker key={shop.id} position={[shop.lat, shop.lng]}>
-          <Popup><strong>{shop.name}</strong></Popup>
+          <Popup>
+            <div style={{ fontFamily: 'sans-serif' }}>
+              <strong style={{ color: '#ff6b35', fontSize: '13px' }}>{shop.name}</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#64748b' }}>
+                Tọa độ: {shop.lat.toFixed(4)}, {shop.lng.toFixed(4)}
+              </p>
+            </div>
+          </Popup>
         </Marker>
       ))}
     </MapContainer>

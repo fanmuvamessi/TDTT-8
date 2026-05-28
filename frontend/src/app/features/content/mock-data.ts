@@ -1,125 +1,218 @@
-import { ExtendedShortVideo, Merchant, Campaign, User } from '../../types';
+// src/app/features/content/mock-data.ts
+import { User, Merchant, Campaign, Video } from '../../types';
 
-// 1. Dữ liệu giả lập Merchant (Đã đổi ID sang string, thêm coverImageUrl)
-const mockUser1: User = { id: "u1", name: "Nguyễn Văn A", avatarUrl: "https://i.pravatar.cc/150?u=u1" };
-const mockUser2: User = { id: "u2", name: "Trần Thị B", avatarUrl: "https://i.pravatar.cc/150?u=u2" };
+// =========================================================================
+// 1. DỮ LIỆU GIẢ LẬP USER (ĐỒNG BỘ CẤU TRÚC BẢNG 'users')
+// =========================================================================
+export const mockUserReviewer: User = {
+  id: 1,
+  firebase_uid: "fb-reviewer-123",
+  email: "thanhdat.foodreview@gmail.com",
+  full_name: "Thành Đạt Food Review",
+  avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+  role: "reviewer",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
 
+const mockUserMerchant1: User = {
+  id: 2,
+  firebase_uid: "fb-merchant-001",
+  email: "bunbohuessus@gmail.com",
+  full_name: "Chủ Quán Bún Bò US",
+  avatar_url: "https://i.pravatar.cc/150?u=m1",
+  role: "merchant",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
+
+const mockUserMerchant2: User = {
+  id: 3,
+  firebase_uid: "fb-merchant-002",
+  email: "studiocafe@gmail.com",
+  full_name: "Quản lý Cà Phê Studio",
+  avatar_url: "https://i.pravatar.cc/150?u=m2",
+  role: "merchant",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
+
+
+// =========================================================================
+// 2. DỮ LIỆU GIẢ LẬP MERCHANT (ĐỒNG BỘ CẤU TRÚC BẢNG 'merchants' & 'menus')
+// KHÔNG CHỨA TRƯỜNG ẢNH BÌA THEO ĐÚNG THIẾT KẾ ALL_MODELS
+// =========================================================================
 export const mockHomeMerchants: Merchant[] = [
   { 
-    id: "m1", 
+    id: 1, 
     name: "Bún Bò Huế US - Nguyễn Văn Cừ", 
     address: "227 Nguyễn Văn Cừ, Quận 5", 
-    rating_avg: 4.8, 
-    distance: "0.2 km",
-    coverImageUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500",
-    lat: 10.7626, 
-    lng: 106.6821,
-    owner: mockUser1,
-    menu: [
-      { id: "menu1", name: "Bún bò đặc biệt", price: 65000, imageUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=200" },
-      { id: "menu2", name: "Trà đá", price: 5000, imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200" }
+    rating_avg: 4.8,
+    latitude: 10.7626, 
+    longitude: 106.6821,
+    description: "Bún bò chuẩn vị Huế, không gian rộng rãi cạnh trường Đại học",
+    owner_id: 2,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    menus: [
+      { id: 11, merchant_id: 1, dish_name: "Bún bò đặc biệt", price: 65000, is_available: true, created_at: new Date().toISOString() },
+      { id: 12, merchant_id: 1, dish_name: "Trà đá", price: 5000, is_available: true, created_at: new Date().toISOString() }
     ]
   },
   { 
-    id: "m2", 
+    id: 2, 
     name: "Cà Phê Studio - An Dương Vương", 
     address: "180 An Dương Vương, Quận 5", 
-    rating_avg: 4.5, 
-    distance: "0.6 km",
-    coverImageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500",
-    lat: 10.7610,
-    lng: 106.6795,
-    owner: mockUser2,
-    menu: [
-      { id: "menu3", name: "Cà phê sữa đá", price: 35000, imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200" }
+    rating_avg: 4.5,
+    latitude: 10.7610,
+    longitude: 106.6795,
+    description: "Không gian yên tĩnh, lý tưởng để làm việc và chạy deadline",
+    owner_id: 3,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    menus: [
+      { id: 21, merchant_id: 2, dish_name: "Cà phê sữa đá", price: 35000, is_available: true, created_at: new Date().toISOString() }
     ]
   },
   { 
-    id: "m3", 
+    id: 3, 
     name: "Bánh Mì Đêm Cô Ba", 
     address: "Góc ngã tư Trần Hưng Đạo", 
-    rating_avg: 4.7, 
-    distance: "1.1 km",
-    coverImageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500",
-    lat: 10.7585,
-    lng: 106.6830,
-    owner: mockUser1,
-    menu: [
-      { id: "menu4", name: "Bánh mì chả", price: 25000, imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200" }
+    rating_avg: 4.7,
+    latitude: 10.7585,
+    longitude: 106.6830,
+    description: "Bánh mì giòn rụm bán xuyên đêm phục vụ hội cú đêm",
+    owner_id: 2,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    menus: [
+      { id: 31, merchant_id: 3, dish_name: "Bánh mì chả xá xíu", price: 25000, is_available: true, created_at: new Date().toISOString() }
     ]
   }
 ];
 
-// 2. Dữ liệu giả lập Quảng cáo (Đã thêm thumbnail_url và sửa ID sang string)
+
+// =========================================================================
+// 3. DỮ LIỆU GIẢ LẬP CAMPAIGN (ĐỒNG BỘ CẤU TRÚC BẢNG 'campaigns')
+// =========================================================================
 export const mockCampaigns: Campaign[] = [
   { 
-    id: "c101", 
+    id: 101, 
+    merchant_id: 1,
     title: "Siêu đại tiệc Bún bò - Giảm 20% cho sinh viên Tự Nhiên", 
+    video_url: "https://assets.mixkit.co/videos/preview/mixkit-cooking-in-a-modern-kitchen-41876-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1625398407796-82650a8c135f?w=800", 
-    link: "/campaign/101",
-    is_sponsored: true
+    is_active: true,
+    impressions_count: 1250,
+    clicks_count: 340,
+    created_at: new Date().toISOString()
   },
   { 
-    id: "c102", 
+    id: 102, 
+    merchant_id: 2,
     title: "Trà trái cây nhiệt đới đồng giá 25 cành giải nhiệt mùa deadline", 
+    video_url: "https://assets.mixkit.co/videos/preview/mixkit-fresh-iced-tea-with-lemon-42261-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800", 
-    link: "/campaign/102",
-    is_sponsored: true
+    is_active: true,
+    impressions_count: 980,
+    clicks_count: 120,
+    created_at: new Date().toISOString()
   }
 ];
 
-// 3. Dữ liệu giả lập Video (Đã thêm thumbnail_url)
-export const mockVideos: ExtendedShortVideo[] = [
+
+// =========================================================================
+// 4. DỮ LIỆU GIẢ LẬP VIDEO CHUNG (ĐỒNG BỘ CẤU TRÚC BẢNG 'videos')
+// =========================================================================
+export const mockVideos: Video[] = [
   {
-    id: "v1",
-    author: { id: "u10", name: "Food Vlogger", avatarUrl: "https://i.pravatar.cc/150?u=10" },
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-cooking-in-a-modern-kitchen-41876-large.mp4",
+    id: 501,
+    title: "Món bún bò chuẩn vị Huế có một không hai ngay gần cơ sở Nguyễn Văn Cừ",
+    video_url: "https://assets.mixkit.co/videos/preview/mixkit-cooking-in-a-modern-kitchen-41876-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500",
-    description: "Món bún bò chuẩn vị Huế có một không hai ngay gần cơ sở Nguyễn Văn Cừ...",
-    likes: 120,
-    rating: 4.8,
-    merchantName: "Bún Bò Huế US - Nguyễn Văn Cừ",
-    merchantId: "m1",
-    tags: ["BunBoHue", "NgonGiaRe"],
-    commentsCount: 15
+    description: "Nước dùng đậm đà, thịt bò mềm và topping siêu chất lượng mng ơiii!",
+    status: "approved",
+    likes_count: 120,
+    reviewer_id: 1,
+    tagged_merchant_id: 1,
+    created_at: new Date().toISOString(),
+    tagged_merchant: { id: 1, name: "Bún Bò Huế US - Nguyễn Văn Cừ" }
   },
   {
-    id: "v2",
-    author: { id: "u11", name: "Thèm Ăn Đêm", avatarUrl: "https://i.pravatar.cc/150?u=11" },
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-pouring-hot-coffee-into-a-cup-42220-large.mp4",
+    id: 502,
+    title: "Ê check-in ngay quán cà phê tone trắng đen chạy deadline xuyên đêm",
+    video_url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-hot-coffee-into-a-cup-42220-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500",
-    description: "Ê check-in ngay quán cà phê tone trắng đen chạy deadline xuyên đêm...",
-    likes: 85,
-    rating: 4.5,
-    merchantName: "Cà Phê Studio - An Dương Vương",
-    merchantId: "m2",
-    tags: ["CaPheDeadline", "Chill"],
-    commentsCount: 9
+    description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
+    status: "approved",
+    likes_count: 85,
+    reviewer_id: 1,
+    tagged_merchant_id: 2,
+    created_at: new Date().toISOString(),
+    tagged_merchant: { id: 2, name: "Cà Phê Studio - An Dương Vương" }
   },
   {
-    id: "v3",
-    author: { id: "u12", name: "Học Muộn Ăn Gì", avatarUrl: "https://i.pravatar.cc/150?u=12" },
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-gourmet-burger-preparation-41566-large.mp4",
+    id: 503,
+    title: "Hàng bánh mì xá xíu, xíu mại đêm đỉnh chóp lề đường mở tới 2h sáng",
+    video_url: "https://assets.mixkit.co/videos/preview/mixkit-gourmet-burger-preparation-41566-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500",
-    description: "Hàng bánh mì xá xíu, xíu mại đêm đỉnh chóp lề đường mở tới 2h sáng...",
-    likes: 243,
-    rating: 4.7,
-    merchantName: "Bánh Mì Đêm Cô Ba",
-    merchantId: "m3",
-    tags: ["BanhMi", "AnDem"],
-    commentsCount: 32
-  },
-  {
-    id: "v4",
-    author: { id: "u13", name: "Trà Sữa Holic", avatarUrl: "https://i.pravatar.cc/150?u=13" },
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-fresh-iced-tea-with-lemon-42261-large.mp4",
-    thumbnail_url: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800",
-    description: "Giải nhiệt trưa nắng với ly trà trái cây khổng lồ full thạch...",
-    likes: 198,
-    rating: 4.6,
-    merchantName: "Trà Trái Cây Đô Thị",
-    merchantId: "m4",
-    tags: ["TraTraiCay", "GiaiNhiet"],
-    commentsCount: 18
+    description: "Chỗ cứu đói quen thuộc của mình mỗi lần học muộn hoặc đi chơi về trễ.",
+    status: "approved",
+    likes_count: 243,
+    reviewer_id: 1,
+    tagged_merchant_id: 3,
+    created_at: new Date().toISOString(),
+    tagged_merchant: { id: 3, name: "Bánh Mì Đêm Cô Ba" }
   }
 ];
+
+
+// =========================================================================
+// 5. CẤU HÌNH LIÊN KẾT ĐỐI TƯỢNG PROFILE CHO USER HIỆN TẠI
+// =========================================================================
+export const mockUserProfile: User = {
+  ...mockUserReviewer,
+  videos: [
+    {
+      id: 601,
+      title: "Phở Thìn Lò Đúc có thực sự ngon như lời đồn ở Sài Gòn?",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-cooking-in-a-modern-kitchen-41876-large.mp4",
+      description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
+      thumbnail_url: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400",
+      status: "approved",
+      likes_count: 1420,
+      reviewer_id: 1,
+      tagged_merchant_id: 1,
+      created_at: new Date().toISOString(),
+      tagged_merchant: { id: 1, name: "Bún Bò Huế US - Nguyễn Văn Cừ" }
+    },
+    {
+      id: 602,
+      title: "Xếp hàng 1 tiếng mua Bánh Mì ăn thử và cái kết đắng lòng",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-gourmet-burger-preparation-41566-large.mp4",
+      description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
+      thumbnail_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400",
+      status: "pending",
+      likes_count: 0,
+      reviewer_id: 1,
+      tagged_merchant_id: 3,
+      created_at: new Date().toISOString(),
+      tagged_merchant: { id: 3, name: "Bánh Mì Đêm Cô Ba" }
+    }
+  ],
+  liked_videos: [
+    {
+      id: 502,
+      title: "Ê check-in ngay quán cà phê tone trắng đen chạy deadline xuyên đêm",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-pouring-hot-coffee-into-a-cup-42220-large.mp4",
+      thumbnail_url: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500",
+      description: "Wifi siêu mạnh, có máy lạnh mát rượi và nước uống khá ổn áp nha.",
+      status: "approved",
+      likes_count: 85,
+      reviewer_id: 4,
+      tagged_merchant_id: 2,
+      created_at: new Date().toISOString(),
+      tagged_merchant: { id: 2, name: "Cà Phê Studio - An Dương Vương" }
+    }
+  ]
+};

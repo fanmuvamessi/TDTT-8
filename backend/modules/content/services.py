@@ -3,10 +3,12 @@ import boto3
 from botocore.config import Config
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from backend.core.config import settings
-from backend.core.all_models import Video, Merchant
+from backend.core.all_models import Video, Merchant, Campaign
 from backend.modules.content.schemas import VideoCreate
+from backend.common.pagination import decode_cursor, encode_cursor
 
 def get_r2_client():
     """
@@ -119,6 +121,105 @@ def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
 
 def get_videos(db: Session, skip: int = 0, limit: int = 10) -> list[Video]:
     """
-    Lấy danh sách video (cho Feed) có phân trang.
+    Lấy danh sách video (cho Feed) có phân trang (cũ).
     """
     return db.query(Video).offset(skip).limit(limit).all()
+
+def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8) -> dict:
+    """
+    Lấy danh sách video (cho Feed) có phân trang bằng Cursor
+    và tự động trộn quảng cáo (Campaign) theo tỷ lệ 4:1.
+    """
+    # 1. Giải mã cursor
+    cursor_data = decode_cursor(cursor)
+    
+    # 2. Truy vấn video thường (organic)
+    query = db.query(Video)
+    if cursor_data:
+        cursor_time, cursor_id = cursor_data
+        query = query.filter(
+            (Video.created_at < cursor_time) | 
+            ((Video.created_at == cursor_time) & (Video.id < cursor_id))
+        )
+    
+    # Lấy thêm 1 phần tử để xác định has_next
+    query = query.order_by(Video.created_at.desc(), Video.id.desc())
+    organic_videos = query.limit(limit + 1).all()
+    
+    # 3. Tính toán next_cursor
+    has_next = len(organic_videos) > limit
+    if has_next:
+        organic_videos = organic_videos[:limit]
+        last_video = organic_videos[-1]
+        next_cursor = encode_cursor(last_video.created_at, last_video.id)
+    else:
+        next_cursor = None
+        
+    # 4. Lấy các chiến dịch quảng cáo (Ads) đang hoạt động
+    active_campaigns = db.query(Campaign).filter(Campaign.is_active == True).all()
+    
+    # 5. Trộn Feed theo tỷ lệ 4 thường : 1 quảng cáo
+    mixed_items = []
+    campaigns_to_track = []
+    ad_index = 0
+    
+    for i, video in enumerate(organic_videos):
+        mixed_items.append(video)
+        
+        # Cứ sau 4 video thường, nếu có QC hoạt động thì chèn vào
+        if (i + 1) % 4 == 0 and active_campaigns:
+            campaign = active_campaigns[ad_index % len(active_campaigns)]
+            ad_index += 1
+            
+            # Đóng gói campaign giống cấu trúc của VideoResponse
+            ad_item = {
+                "id": campaign.id,
+                "title": campaign.title,
+                "video_url": campaign.video_url,
+                "thumbnail_url": campaign.thumbnail_url,
+                "description": f"Được tài trợ bởi {campaign.merchant.name if campaign.merchant else ''}",
+                "status": "approved",
+                "likes_count": 0,
+                "reviewer_id": 0,
+                "tagged_merchant_id": campaign.merchant_id,
+                "created_at": campaign.created_at,
+                "is_ads": True,
+                "user": {
+                    "id": 0,
+                    "full_name": campaign.merchant.name if campaign.merchant else "Được tài trợ",
+                    "avatar_url": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+                    "username": "sponsored"
+                },
+                "restaurant": {
+                    "id": campaign.merchant_id,
+                    "name": campaign.merchant.name if campaign.merchant else "",
+                    "address": campaign.merchant.address if campaign.merchant else "",
+                    "latitude": campaign.merchant.latitude if campaign.merchant else 0.0,
+                    "longitude": campaign.merchant.longitude if campaign.merchant else 0.0
+                } if campaign.merchant else None
+            }
+            mixed_items.append(ad_item)
+            campaigns_to_track.append(campaign.id)
+            
+    return {
+        "items": mixed_items,
+        "next_cursor": next_cursor,
+        "campaigns_to_track": campaigns_to_track
+    }
+
+def increment_campaign_impressions(db: Session, campaign_ids: list[int]):
+    """
+    Tăng impressions_count của các chiến dịch quảng cáo được hiển thị trong tiến trình nền.
+    """
+    if not campaign_ids:
+        return
+    try:
+        db.query(Campaign).filter(Campaign.id.in_(campaign_ids)).update(
+            {Campaign.impressions_count: Campaign.impressions_count + 1},
+            synchronize_session=False
+        )
+        db.commit()
+        print(f"[CONTENT] Đã tăng impressions cho các chiến dịch: {campaign_ids}")
+    except Exception as e:
+        db.rollback()
+        print(f"[CONTENT] Lỗi khi tăng impressions: {e}")

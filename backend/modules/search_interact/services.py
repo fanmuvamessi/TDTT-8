@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import HTTPException, status
 from typing import List, Optional
-from backend.core.all_models import Like, Comment, Video, Merchant
-from backend.modules.search_interact.schemas import LikeToggleResponse, CommentCreate
+from backend.core.all_models import Like, Comment, Video, Merchant, CommentLike
+from backend.modules.search_interact.schemas import LikeToggleResponse, CommentCreate, CommentLikeToggleResponse
 
 def toggle_like(db: Session, video_id: int, user_id: int) -> LikeToggleResponse:
     # 1. Verify video exists
@@ -87,8 +87,49 @@ def get_video_comments(db: Session, video_id: int) -> List[Comment]:
             detail=f"Video with ID {video_id} does not exist"
         )
         
-    # Return flat list of comments sorted by created_at ascending (oldest first for natural conversation reading)
-    return db.query(Comment).filter(Comment.video_id == video_id).order_by(Comment.created_at.asc()).all()
+    # Lấy các bình luận gốc (parent_id IS NULL) để Pydantic sinh cây bình luận đệ quy tuyệt đẹp
+    return db.query(Comment).filter(
+        Comment.video_id == video_id,
+        Comment.parent_id == None
+    ).order_by(Comment.created_at.asc()).all()
+
+def toggle_comment_like(db: Session, comment_id: int, user_id: int) -> CommentLikeToggleResponse:
+    # 1. Verify comment exists
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Comment with ID {comment_id} does not exist"
+        )
+
+    # 2. Check if already liked
+    existing_like = db.query(CommentLike).filter(
+        CommentLike.comment_id == comment_id,
+        CommentLike.user_id == user_id
+    ).first()
+
+    if existing_like:
+        # Unlike
+        db.delete(existing_like)
+        if comment.likes_count > 0:
+            comment.likes_count -= 1
+        db.commit()
+        liked = False
+        message = "Unliked comment successfully"
+    else:
+        # Like
+        new_like = CommentLike(comment_id=comment_id, user_id=user_id)
+        db.add(new_like)
+        comment.likes_count += 1
+        db.commit()
+        liked = True
+        message = "Liked comment successfully"
+
+    return CommentLikeToggleResponse(
+        liked=liked,
+        likes_count=comment.likes_count,
+        message=message
+    )
 
 def geo_search_merchants(
     db: Session,
@@ -97,7 +138,8 @@ def geo_search_merchants(
     lng: float,
     radius: float,
     limit: int,
-    offset: int
+    offset: int,
+    category: Optional[str] = None
 ) -> List[dict]:
     """
     Search merchants using Haversine formula on SQL.
@@ -108,32 +150,7 @@ def geo_search_merchants(
     like_op = "ILIKE" if dialect == "postgresql" else "LIKE"
     
     # Base parts of SQL query
-    if q and q.strip():
-        search_pattern = f"%{q.strip()}%"
-        filter_clause = f"(name {like_op} :q OR description {like_op} :q)"
-    else:
-        search_pattern = "%"
-        filter_clause = "1=1"
-
-    # Haversine distance subquery in SQL:
-    # 6371 * acos(cos(rad(lat1)) * cos(rad(lat2)) * cos(rad(lng2) - rad(lng1)) + sin(rad(lat1)) * sin(rad(lat2)))
-    haversine_sql = """
-        (6371 * acos(
-            cos(radians(:lat)) * cos(radians(latitude)) * cos(radians(longitude) - radians(:lng))
-            + sin(radians(:lat)) * sin(radians(latitude))
-        ))
-    """
-
-    query_str = f"""
-        SELECT id, name, address, latitude, longitude, description, rating_avg, created_at,
-               {haversine_sql} AS distance
-        FROM merchants
-        WHERE {filter_clause}
-          AND {haversine_sql} <= :radius
-        ORDER BY distance ASC
-        LIMIT :limit OFFSET :offset
-    """
-
+    conditions = ["1=1"]
     params = {
         "lat": lat,
         "lng": lng,
@@ -141,9 +158,47 @@ def geo_search_merchants(
         "limit": limit,
         "offset": offset
     }
-    
+
     if q and q.strip():
+        search_pattern = f"%{q.strip()}%"
+        conditions.append(f"(name {like_op} :q OR description {like_op} :q)")
         params["q"] = search_pattern
+
+    if category and category.strip():
+        # Ánh xạ từ các slug Frontend gửi lên thành các từ khóa tiếng Việt chuẩn
+        category_map = {
+            "pho": "phở",
+            "bun": "bún",
+            "com": "cơm",
+            "banh": "bánh",
+            "cafe": "cà phê",
+            "tra": "trà sữa",
+            "lau": "lẩu"
+        }
+        mapped_cat = category_map.get(category.strip().lower(), category.strip())
+        cat_pattern = f"%{mapped_cat}%"
+        conditions.append(f"(category {like_op} :category OR name {like_op} :category)")
+        params["category"] = cat_pattern
+
+    # Haversine distance subquery in SQL:
+    haversine_sql = """
+        (6371 * acos(
+            cos(radians(:lat)) * cos(radians(latitude)) * cos(radians(longitude) - radians(:lng))
+            + sin(radians(:lat)) * sin(radians(latitude))
+        ))
+    """
+
+    filter_clause = " AND ".join(conditions)
+
+    query_str = f"""
+        SELECT id, name, address, category, latitude, longitude, description, rating_avg, created_at,
+               {haversine_sql} AS distance
+        FROM merchants
+        WHERE {filter_clause}
+          AND {haversine_sql} <= :radius
+        ORDER BY distance ASC
+        LIMIT :limit OFFSET :offset
+    """
 
     result = db.execute(text(query_str), params)
     
@@ -153,6 +208,7 @@ def geo_search_merchants(
             "id": row.id,
             "name": row.name,
             "address": row.address,
+            "category": row.category,
             "latitude": row.latitude,
             "longitude": row.longitude,
             "description": row.description,

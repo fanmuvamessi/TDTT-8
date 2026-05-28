@@ -40,3 +40,29 @@ def login(
     db: Session = Depends(get_db)
 ):
     return services.login_user(db=db, data=data)
+
+@router.get(
+    "/users/me/profile",
+    response_model=schemas.UserProfileResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Lấy hồ sơ cá nhân của chính mình",
+    description="Truy xuất thông tin hồ sơ blogger chi tiết của chính người dùng hiện tại đang đăng nhập."
+)
+def get_my_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return services.get_user_profile(db=db, user_id=current_user.id)
+
+@router.get(
+    "/users/{user_id}/profile",
+    response_model=schemas.UserProfileResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Lấy hồ sơ cá nhân của blogger khác",
+    description="Truy xuất thông tin hồ sơ blogger chi tiết của bất kỳ người dùng nào qua ID công khai."
+)
+def get_user_profile(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    return services.get_user_profile(db=db, user_id=user_id)

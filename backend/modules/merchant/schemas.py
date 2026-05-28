@@ -19,6 +19,7 @@ class MenuResponse(MenuCreate):
 class MerchantCreate(BaseModel):
     name: str
     address: Optional[str] = None
+    category: Optional[str] = None
     latitude: float
     longitude: float
     description: Optional[str] = None
@@ -27,6 +28,7 @@ class MerchantResponse(BaseModel):
     id: int
     name: str
     address: Optional[str]
+    category: Optional[str] = None
     description: Optional[str]
     rating_avg: float
     owner_id: int
@@ -39,6 +41,7 @@ class MerchantResponse(BaseModel):
             id=obj.id,
             name=obj.name,
             address=obj.address,
+            category=getattr(obj, 'category', None),
             description=obj.description,
             rating_avg=obj.rating_avg,
             owner_id=obj.owner_id,

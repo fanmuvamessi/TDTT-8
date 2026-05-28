@@ -29,6 +29,7 @@ class User(Base):
     videos = relationship("Video", back_populates="reviewer")
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+    comment_likes = relationship("CommentLike", back_populates="user", cascade="all, delete-orphan")
 
 
 class Merchant(Base):
@@ -37,6 +38,7 @@ class Merchant(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     address = Column(String, nullable=True)
+    category = Column(String, nullable=True)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     description = Column(Text, nullable=True)
@@ -114,12 +116,28 @@ class Comment(Base):
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=False)
     content = Column(Text, nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
+    likes_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="comments")
     video = relationship("Video", back_populates="comments")
-    replies = relationship("Comment", backref="parent", remote_side=[id])
+    likes = relationship("CommentLike", back_populates="comment", cascade="all, delete-orphan")
+    parent = relationship("Comment", remote_side=[id], back_populates="replies")
+    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
+
+
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    comment_id = Column(Integer, ForeignKey("comments.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="comment_likes")
+    comment = relationship("Comment", back_populates="likes")
 
 class Campaign(Base):
     __tablename__ = "campaigns"

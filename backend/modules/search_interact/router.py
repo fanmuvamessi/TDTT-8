@@ -42,7 +42,7 @@ def create_video_comment(
     response_model=List[schemas.CommentResponse],
     status_code=status.HTTP_200_OK,
     summary="Lấy toàn bộ bình luận của video",
-    description="Trả về danh sách tất cả bình luận phẳng của video được sắp xếp theo thời gian tăng dần (cũ nhất lên trước)."
+    description="Trả về danh sách tất cả bình luận của video được sắp xếp theo thời gian tăng dần, tự động lồng các câu trả lời dưới dạng cây đệ quy."
 )
 def get_video_comments_list(
     video_id: int,
@@ -50,15 +50,30 @@ def get_video_comments_list(
 ):
     return services.get_video_comments(db=db, video_id=video_id)
 
+@router.post(
+    "/comments/{comment_id}/like",
+    response_model=schemas.CommentLikeToggleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Thả tim hoặc hủy thả tim bình luận (Toggle Comment Like)",
+    description="Thích bình luận nếu chưa thích, ngược lại thì hủy thích. Trả về trạng thái và tổng số lượt thích bình luận hiện tại."
+)
+def toggle_comment_like(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return services.toggle_comment_like(db=db, comment_id=comment_id, user_id=current_user.id)
+
 @router.get(
     "/search",
     response_model=List[schemas.MerchantSearchResponse],
     status_code=status.HTTP_200_OK,
     summary="Tìm kiếm địa lý quán ăn (Geo-Search)",
-    description="Tìm kiếm quán ăn dựa trên tọa độ địa lý của người dùng, bán kính R (km) và từ khóa tìm kiếm (ILIKE tên quán/mô tả quán). Trả về khoảng cách chi tiết."
+    description="Tìm kiếm quán ăn dựa trên tọa độ địa lý của người dùng, bán kính R (km), từ khóa và lọc theo danh mục món ăn (ví dụ: pho, bun, com, banh). Trả về khoảng cách chi tiết."
 )
 def search_merchants_by_geo(
     q: Optional[str] = Query(None, description="Từ khóa tìm kiếm tên quán hoặc mô tả quán"),
+    category: Optional[str] = Query(None, description="Lọc theo danh mục món ăn (ví dụ: pho, bun, com, banh)"),
     lat: float = Query(..., description="Vĩ độ hiện tại của người dùng (ví dụ: 10.762)"),
     lng: float = Query(..., description="Kinh độ hiện tại của người dùng (ví dụ: 106.682)"),
     radius: float = Query(5.0, description="Bán kính tìm kiếm tối đa tính bằng km (mặc định: 5.0)"),
@@ -73,7 +88,8 @@ def search_merchants_by_geo(
         lng=lng,
         radius=radius,
         limit=limit,
-        offset=offset
+        offset=offset,
+        category=category
     )
 
 

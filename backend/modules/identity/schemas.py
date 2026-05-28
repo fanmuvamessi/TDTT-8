@@ -30,3 +30,35 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+from datetime import datetime
+from typing import List
+
+class VideoMinResponse(BaseModel):
+    id: int
+    title: str
+    video_url: str
+    thumbnail_url: Optional[str] = None
+    description: Optional[str] = None
+    likes_count: int = 0
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserProfileResponse(BaseModel):
+    id: int
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    role: str
+    bio: Optional[str] = None
+    followers_count: int = 0
+    following_count: int = 0
+    posts_count: int = 0
+    saved_count: int = 0
+    likes_received_count: int = 0
+    videos: List[VideoMinResponse] = []
+
+    class Config:
+        from_attributes = True

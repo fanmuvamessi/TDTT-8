@@ -21,9 +21,13 @@ from backend.main import app
 
 class BaseContentTest(unittest.TestCase):
     def setUp(self):
-        # 1. Khởi tạo file SQLite test chuyên biệt
-        self.db_file = os.path.join(backend_dir, "test_content.db")
-        self.engine = create_engine(f"sqlite:///{self.db_file}", connect_args={"check_same_thread": False})
+        # 1. Khởi tạo SQLite in-memory test chuyên biệt với StaticPool để tránh lỗi file lock trên Windows
+        from sqlalchemy.pool import StaticPool
+        self.engine = create_engine(
+            "sqlite://", 
+            connect_args={"check_same_thread": False}, 
+            poolclass=StaticPool
+        )
         self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
         # 2. Tạo cấu trúc DB
@@ -65,13 +69,8 @@ class BaseContentTest(unittest.TestCase):
         self.verify_patcher.stop()
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
         app.dependency_overrides.clear()
-        
-        if os.path.exists(self.db_file):
-            try:
-                os.remove(self.db_file)
-            except Exception:
-                pass
 
 class TestContentRouter(BaseContentTest):
     def test_get_status(self):
@@ -163,8 +162,15 @@ class TestContentRouter(BaseContentTest):
         
         response = self.client.get("/api/content/videos")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()), 2)
-        self.assertEqual(response.json()[0]["title"], "Video 1")
+        
+        data = response.json()
+        self.assertIn("items", data)
+        self.assertIn("next_cursor", data)
+        self.assertEqual(len(data["items"]), 2)
+        
+        titles = [v["title"] for v in data["items"]]
+        self.assertIn("Video 1", titles)
+        self.assertIn("Video 2", titles)
 
 if __name__ == "__main__":
     unittest.main()

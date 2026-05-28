@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from backend.core.database import get_db
 from backend.core.security import get_current_user, RoleChecker
@@ -54,13 +54,24 @@ def create_video_metadata(
 
 @router.get(
     "/videos",
-    response_model=List[schemas.VideoResponse],
+    response_model=schemas.VideoFeedResponse,
     summary="Lấy danh sách các Video review (Feed)",
-    description="Truy xuất danh sách video để hiển thị trên bảng tin (Feed) công cộng. Hỗ trợ phân trang."
+    description="Truy xuất danh sách video để hiển thị trên bảng tin (Feed) công cộng. Hỗ trợ phân trang bằng Cursor và tự động trộn QC."
 )
 def list_videos(
-    skip: int = Query(0, ge=0, description="Số lượng bản ghi bỏ qua"),
-    limit: int = Query(10, ge=1, le=100, description="Số lượng bản ghi tối đa trả về"),
-    db: Session = Depends(get_db)
+    cursor: Optional[str] = Query(None, description="Cursor của trang trước (base64 string)"),
+    limit: int = Query(8, ge=1, le=100, description="Số lượng bản ghi tối đa trả về"),
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = BackgroundTasks()
 ):
-    return services.get_videos(db=db, skip=skip, limit=limit)
+    feed_data = services.get_video_feed(db=db, cursor=cursor, limit=limit)
+    
+    # Kích hoạt tăng lượt impressions của campaign bất đồng bộ qua background task
+    if feed_data.get("campaigns_to_track") and background_tasks:
+        background_tasks.add_task(
+            services.increment_campaign_impressions,
+            db,
+            feed_data["campaigns_to_track"]
+        )
+        
+    return feed_data

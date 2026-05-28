@@ -41,8 +41,32 @@ def seed_database():
         print("\n--- Creating mock users ---")
         users = [
             User(email="admin@foodreview.com", full_name="Nguyễn Admin", role="admin", firebase_uid="g_admin_123", avatar_url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"),
-            User(email="reviewer1@foodreview.com", full_name="Khoa Pug Review", role="reviewer", firebase_uid="g_rev_1", avatar_url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150"),
-            User(email="reviewer2@foodreview.com", full_name="Ninh Titop", role="reviewer", firebase_uid="g_rev_2", avatar_url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"),
+            User(
+                email="reviewer1@foodreview.com", 
+                full_name="Khoa Pug Review", 
+                role="reviewer", 
+                firebase_uid="g_rev_1", 
+                avatar_url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150",
+                meta_data={
+                    "bio": "Reviewer ẩm thực tự do 🍜 | Khám phá ngõ ngách Sài Gòn | Hợp tác quảng cáo liên hệ inbox.",
+                    "followers_count": 24500,
+                    "following_count": 340,
+                    "saved_count": 182
+                }
+            ),
+            User(
+                email="reviewer2@foodreview.com", 
+                full_name="Ninh Titop", 
+                role="reviewer", 
+                firebase_uid="g_rev_2", 
+                avatar_url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+                meta_data={
+                    "bio": "Food lover 🍕 | Đam mê nấu nướng và lê la quán xá | Kênh Youtube Ninh Titop.",
+                    "followers_count": 89000,
+                    "following_count": 120,
+                    "saved_count": 420
+                }
+            ),
             User(email="merchant1@foodreview.com", full_name="Chủ Quán Ba Đạt", role="merchant", firebase_uid="g_mer_1", avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"),
             User(email="merchant2@foodreview.com", full_name="Bà Sáu Bán Chè", role="merchant", firebase_uid="g_mer_2", avatar_url="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150")
         ]
@@ -55,36 +79,43 @@ def seed_database():
         # Định nghĩa các món ăn thực tế và mô tả tương ứng
         vietnamese_food_categories = [
             {
+                "category": "Phở",
                 "name_tpl": "Phở Bò {suffix}",
                 "desc": "Phở bò truyền thống Hà Nội với nước dùng ninh xương ống bò trong 12 tiếng, thơm vị quế hồi thảo quả.",
                 "menu_items": [("Phở Tái Nạm", 55000), ("Phở Gân Sách", 60000), ("Phở Đặc Biệt", 75000), ("Quẩy Giòn", 5000)]
             },
             {
+                "category": "Bún chả",
                 "name_tpl": "Bún Chả {suffix}",
                 "desc": "Bún chả Hà Nội nướng than hoa thơm lừng ăn kèm nước mắm đu đủ chua ngọt thanh mát.",
                 "menu_items": [("Bún Chả Cổ Truyền", 45000), ("Bún Chả Đặc Biệt", 60000), ("Nem Cua Bể", 15000)]
             },
             {
+                "category": "Cơm tấm",
                 "name_tpl": "Cơm Tấm {suffix}",
                 "desc": "Cơm tấm Sài Gòn chuẩn vị hạt cơm tơi xốp, sườn nướng mật ong thơm phức kết hợp chả trứng nấm tai mèo.",
                 "menu_items": [("Cơm Tấm Sườn Bì Chả", 40000), ("Cơm Tấm Sườn Ốp La", 45000), ("Cơm Tấm Đặc Biệt", 65000)]
             },
             {
+                "category": "Bánh mì",
                 "name_tpl": "Bánh Mì {suffix}",
                 "desc": "Bánh mì Việt Nam giòn tan bên ngoài, ruột xốp thơm pate gan heo tự làm và bơ trứng béo ngậy.",
                 "menu_items": [("Bánh Mì Thập Cẩm", 25000), ("Bánh Mì Heo Quay", 30000), ("Bánh Mì Chả Cá", 20000)]
             },
             {
+                "category": "Bún",
                 "name_tpl": "Bún Bò Huế {suffix}",
                 "desc": "Bún bò Huế đậm đà hương mắm ruốc, sả thơm, sa tế cay nồng kèm chân giò, giò heo, bò tái.",
                 "menu_items": [("Bún Bò Giò Chả", 50000), ("Bún Bò Thập Cẩm", 65000), ("Chả Cua Thêm", 10000)]
             },
             {
+                "category": "Bún",
                 "name_tpl": "Hủ Tiếu Nam Vang {suffix}",
                 "desc": "Hủ tiếu Nam Vang chuẩn vị với tôm, gan heo, thịt băm, trứng cút, nước lèo ngọt thanh từ xương ống.",
                 "menu_items": [("Hủ Tiếu Khô Đặc Biệt", 55000), ("Hủ Tiếu Nước Trống", 45000)]
             },
             {
+                "category": "Bánh",
                 "name_tpl": "Chè {suffix} Nam Bộ",
                 "desc": "Chè ngọt thanh thanh béo ngậy nước cốt dừa tươi nấu cùng chuối, khoai môn, đậu ngự.",
                 "menu_items": [("Chè Thái", 25000), ("Chè Bưởi An Giang", 20000), ("Sâm Bổ Lượng", 25000)]
@@ -120,6 +151,7 @@ def seed_database():
             merchant = Merchant(
                 name=f"{name} - Chi nhánh {i}",
                 address=f"Số {random.randint(1, 450)} Đường {random.choice(['Nguyễn Trãi', 'Lê Lợi', 'Cách Mạng Tháng 8', 'Ba Tháng Hai', 'Nguyễn Thị Minh Khai'])}, {district}, TP. Hồ Chí Minh",
+                category=category["category"],
                 latitude=round(lat, 6),
                 longitude=round(lng, 6),
                 description=category["desc"],

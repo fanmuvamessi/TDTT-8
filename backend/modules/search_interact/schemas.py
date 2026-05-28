@@ -18,6 +18,11 @@ class LikeToggleResponse(BaseModel):
     likes_count: int
     message: str
 
+class CommentLikeToggleResponse(BaseModel):
+    liked: bool
+    likes_count: int
+    message: str
+
 # Comments Schemas
 class CommentCreate(BaseModel):
     content: str
@@ -28,8 +33,10 @@ class CommentResponse(BaseModel):
     video_id: int
     content: str
     parent_id: Optional[int]
+    likes_count: int = 0
     created_at: datetime
     user: UserMinResponse
+    replies: Optional[List['CommentResponse']] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,6 +45,7 @@ class MerchantSearchResponse(BaseModel):
     id: int
     name: str
     address: Optional[str] = None
+    category: Optional[str] = None
     latitude: float
     longitude: float
     description: Optional[str] = None

@@ -1,45 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, User, ChefHat, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useRegisterForm } from "@/hooks/use-register-form";
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeTerms: false,
-  });
+  const {
+    formData,
+    setFormData,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    isLoading,
+    passwordRequirements,
+    handleSubmit,
+    handleGoogleLogin,
+  } = useRegisterForm();
 
-  const passwordRequirements = [
-    { label: "Ít nhất 8 ký tự", met: formData.password.length >= 8 },
-    { label: "Chứa chữ hoa", met: /[A-Z]/.test(formData.password) },
-    { label: "Chứa chữ số", met: /[0-9]/.test(formData.password) },
-  ];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu không khớp!");
-      return;
-    }
-    setIsLoading(true);
-    // Simulate registration
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    router.push("/");
-  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -227,7 +209,13 @@ export default function RegisterPage() {
           </div>
 
           {/* Social registration */}
-          <Button variant="outline" className="w-full h-12 rounded-xl">
+          <Button 
+            variant="outline" 
+            className="w-full h-12 rounded-xl"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

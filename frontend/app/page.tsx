@@ -6,6 +6,7 @@ import { CategoryFilter } from "@/components/category-filter";
 import { FoodPost } from "@/components/food-post";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { foodPosts, restaurants, userProfile } from "@/lib/data";
+import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -157,6 +158,11 @@ const defaultComments: { [postId: string]: Comment[] } = {
 };
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const displayName = user?.full_name || userProfile.name;
+  const displayUsername = user?.email ? user.email.split('@')[0] : userProfile.username;
+  const displayAvatar = user?.avatar_url || userProfile.avatar;
+
   const [postsList, setPostsList] = useState(foodPosts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [commentsState, setCommentsState] = useState<{ [postId: string]: Comment[] }>(defaultComments);
@@ -223,16 +229,16 @@ export default function HomePage() {
 
             {/* Profile Summary Card */}
             <div className="mx-4 p-4 rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-border shadow-xs">
-              <Link href="/profile" className="flex items-center gap-3 group">
+              <Link href={user ? "/profile" : "/login"} className="flex items-center gap-3 group">
                 <Avatar className="w-10 h-10 ring-2 ring-primary/10 transition-transform duration-300 group-hover:scale-105">
-                  <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                  <AvatarFallback className="bg-primary/20 text-primary font-bold">{userProfile.name[0]}</AvatarFallback>
+                  <AvatarImage src={displayAvatar} alt={displayName} />
+                  <AvatarFallback className="bg-primary/20 text-primary font-bold">{displayName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                    {userProfile.name}
+                    {displayName}
                   </h3>
-                  <p className="text-xs text-muted-foreground truncate">@{userProfile.username}</p>
+                  <p className="text-xs text-muted-foreground truncate">@{displayUsername}</p>
                 </div>
               </Link>
             </div>
@@ -510,9 +516,9 @@ export default function HomePage() {
                 const newCommentObj: Comment = {
                   id: `c_${Date.now()}`,
                   user: {
-                    name: userProfile.name,
-                    username: userProfile.username,
-                    avatar: userProfile.avatar,
+                    name: displayName,
+                    username: displayUsername,
+                    avatar: displayAvatar,
                   },
                   content: newCommentText.trim(),
                   createdAt: "Vừa xong",
@@ -779,8 +785,8 @@ export default function HomePage() {
                     
                     <form onSubmit={handleSendComment} className="flex items-center gap-2">
                       <Avatar className="w-7 h-7 flex-shrink-0 ring-1 ring-primary/20">
-                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                        <AvatarFallback>{userProfile.name[0]}</AvatarFallback>
+                        <AvatarImage src={displayAvatar} alt={displayName} />
+                        <AvatarFallback>{displayName[0]}</AvatarFallback>
                       </Avatar>
                       
                       <div className="relative flex-1">

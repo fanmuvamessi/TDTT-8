@@ -14,7 +14,7 @@ import {
   Settings, 
   LogOut, 
   Sparkles,
-  Moon
+  LogIn
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -28,9 +28,16 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { userProfile } from "@/lib/data";
+import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 
 export function Header() {
+  const { user, logout } = useAuth();
+
+  const displayName = user?.full_name || userProfile.name;
+  const displayUsername = user?.email ? user.email.split('@')[0] : userProfile.username;
+  const displayAvatar = user?.avatar_url || userProfile.avatar;
+
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3">
@@ -53,28 +60,28 @@ export function Header() {
                 <div className="absolute top-4 right-4">
                   <ThemeToggle compact />
                 </div>
-                <Link href="/profile" className="flex items-center gap-4 group">
+                <Link href={user ? "/profile" : "/login"} className="flex items-center gap-4 group">
                   <Avatar className="w-14 h-14 ring-4 ring-primary/10 transition-transform duration-300 group-hover:scale-105">
-                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                    <AvatarImage src={displayAvatar} alt={displayName} />
                     <AvatarFallback className="bg-primary/20 text-primary font-bold text-lg">
-                      {userProfile.name[0]}
+                      {displayName[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                      {userProfile.name}
+                      {displayName}
                     </h2>
                     <p className="text-xs text-muted-foreground truncate">
-                      @{userProfile.username}
+                      @{displayUsername}
                     </p>
                   </div>
                 </Link>
                 <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
                   <div>
-                    <span className="font-bold text-foreground">{userProfile.posts}</span> bài viết
+                    <span className="font-bold text-foreground">{user ? "12" : userProfile.posts}</span> bài viết
                   </div>
                   <div>
-                    <span className="font-bold text-foreground">12.5K</span> người theo dõi
+                    <span className="font-bold text-foreground">{user ? "250" : "12.5K"}</span> người theo dõi
                   </div>
                 </div>
               </div>
@@ -95,7 +102,7 @@ export function Header() {
                     <MapPin className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span>Bản đồ ẩm thực</span>
                   </Link>
-                  <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
+                  <Link href={user ? "/profile" : "/login"} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
                     <User className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span>Hồ sơ của tôi</span>
                   </Link>
@@ -103,11 +110,11 @@ export function Header() {
 
                 <div className="space-y-1">
                   <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase tracking-wider">Cá nhân hóa</p>
-                  <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
+                  <Link href={user ? "/profile" : "/login"} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
                     <Bookmark className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span>Bài viết đã lưu</span>
                   </Link>
-                  <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
+                  <Link href={user ? "/profile" : "/login"} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
                     <Heart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span>Quán ăn yêu thích</span>
                   </Link>
@@ -128,14 +135,27 @@ export function Header() {
                   <ThemeToggle />
                 </div>
                 <div className="space-y-1">
-                  <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
+                  <Link href={user ? "/profile" : "/login"} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 group">
                     <Settings className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span>Cài đặt</span>
                   </Link>
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200 group text-left">
-                    <LogOut className="w-5 h-5 text-destructive/80 group-hover:text-destructive transition-colors" />
-                    <span>Đăng xuất</span>
-                  </button>
+                  {user ? (
+                    <button 
+                      onClick={logout}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200 group text-left"
+                    >
+                      <LogOut className="w-5 h-5 text-destructive/80 group-hover:text-destructive transition-colors" />
+                      <span>Đăng xuất</span>
+                    </button>
+                  ) : (
+                    <Link 
+                      href="/login"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-primary hover:bg-primary/10 transition-all duration-200 group text-left"
+                    >
+                      <LogIn className="w-5 h-5 text-primary/80 group-hover:text-primary transition-colors" />
+                      <span>Đăng nhập</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             </SheetContent>

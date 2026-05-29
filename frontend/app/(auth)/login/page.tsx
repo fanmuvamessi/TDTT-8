@@ -1,32 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, ChefHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useLoginForm } from "@/hooks/use-login-form";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    remember: false,
-  });
+  const {
+    formData,
+    setFormData,
+    showPassword,
+    setShowPassword,
+    isLoading,
+    handleSubmit,
+    handleGoogleLogin,
+  } = useLoginForm();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate login
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    router.push("/");
-  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -146,7 +138,13 @@ export default function LoginPage() {
           </div>
 
           {/* Social login */}
-          <Button variant="outline" className="w-full h-12 rounded-xl">
+          <Button 
+            variant="outline" 
+            className="w-full h-12 rounded-xl"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

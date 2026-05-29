@@ -1,4 +1,5 @@
 import json
+import urllib
 import urllib.request
 import urllib.error
 from fastapi import HTTPException, status
@@ -7,7 +8,7 @@ from firebase_admin import auth
 
 from backend.core.config import settings
 from backend.core.all_models import User, Video
-from backend.modules.identity.schemas import RegisterRequest, LoginRequest, UserProfileResponse
+from backend.modules.identity.schemas import RegisterRequest, LoginRequest, UserProfileResponse, GoogleLoginRequest
 
 def register_user(db: Session, data: RegisterRequest) -> User:
     """
@@ -105,6 +106,14 @@ def login_user(db: Session, data: LoginRequest) -> dict:
     if username.isdigit():
         username = f"{username}@foodspot.local"
 
+    # Kiểm tra xem tài khoản có tồn tại trong cơ sở dữ liệu hay không
+    db_user = db.query(User).filter(User.email == username).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài khoản không tồn tại."
+        )
+
     # 2. Kiểm tra cấu hình Firebase Web API Key
     api_key = settings.FIREBASE_WEB_API_KEY
     
@@ -125,7 +134,8 @@ def login_user(db: Session, data: LoginRequest) -> dict:
     
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req) as response:
+        # Đặt timeout=5 giây để tránh bị đơ/loop vô tận khi mạng gặp sự cố
+        with urllib.request.urlopen(req, timeout=5) as response:
             res_body = response.read().decode("utf-8")
             res_json = json.loads(res_body)
             
@@ -169,7 +179,17 @@ def login_user(db: Session, data: LoginRequest) -> dict:
             error_msg = ""
         
         # Phân tích một số lỗi phổ biến của Firebase
-        if "EMAIL_NOT_FOUND" in error_msg or "INVALID_PASSWORD" in error_msg or "INVALID_LOGIN_CREDENTIALS" in error_msg:
+        if "EMAIL_NOT_FOUND" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tài khoản không tồn tại."
+            )
+        elif "INVALID_PASSWORD" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Mật khẩu không chính xác."
+            )
+        elif "INVALID_LOGIN_CREDENTIALS" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Email/Số điện thoại hoặc mật khẩu không chính xác."
@@ -236,3 +256,66 @@ def get_user_profile(db: Session, user_id: int) -> UserProfileResponse:
         likes_received_count=likes_received,
         videos=user_videos
     )
+
+
+def login_google_user(db: Session, data: GoogleLoginRequest) -> dict:
+    """
+    Xác thực Google ID Token gửi lên từ Frontend bằng Firebase Admin SDK.
+    Tự động tạo mới tài khoản nếu chưa tồn tại (Auto-provision).
+    """
+    try:
+        decoded_token = auth.verify_id_token(data.id_token)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Xác thực Google ID Token thất bại: {str(e)}"
+        )
+        
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không chứa Firebase UID hợp lệ."
+        )
+        
+    # Tìm kiếm user trong local database bằng firebase_uid
+    user = db.query(User).filter(User.firebase_uid == uid).first()
+    
+    # Tự động tạo mới hoặc cập nhật nếu chưa có
+    if not user:
+        email = decoded_token.get("email")
+        if email:
+            # Tìm theo email để liên kết nếu đã đăng ký email/password trước đó
+            user = db.query(User).filter(User.email == email).first()
+            
+        if user:
+            user.firebase_uid = uid
+            db.commit()
+            db.refresh(user)
+            print(f"[IDENTITY] Đã liên kết tài khoản email '{email}' với google firebase_uid '{uid}'")
+        else:
+            # Tạo mới hoàn toàn
+            user = User(
+                firebase_uid=uid,
+                email=email,
+                full_name=decoded_token.get("name", email.split("@")[0] if email else "Blogger Google"),
+                avatar_url=decoded_token.get("picture"),
+                role="reviewer"
+            )
+            try:
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                print(f"[IDENTITY] Tự động đồng bộ tài khoản Google mới. UID: {uid}")
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Lỗi khi lưu thông tin người dùng Google vào local database: {str(e)}"
+                )
+                
+    return {
+        "access_token": data.id_token,
+        "token_type": "bearer",
+        "user": user
+    }

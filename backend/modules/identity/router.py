@@ -66,3 +66,16 @@ def get_user_profile(
     db: Session = Depends(get_db)
 ):
     return services.get_user_profile(db=db, user_id=user_id)
+
+@router.post(
+    "/google",
+    response_model=schemas.TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Đăng nhập tài khoản bằng Google ID Token",
+    description="Xác thực người dùng bằng Google ID Token từ Frontend Firebase SDK. Trả về Access Token và hồ sơ người dùng."
+)
+def login_google(
+    data: schemas.GoogleLoginRequest,
+    db: Session = Depends(get_db)
+):
+    return services.login_google_user(db=db, data=data)

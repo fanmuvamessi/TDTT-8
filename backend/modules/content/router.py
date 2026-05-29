@@ -77,3 +77,20 @@ def list_videos(
         )
         
     return feed_data
+
+@router.delete(
+    "/videos/{video_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Xóa Video review (Bài viết/Post)",
+    description="Xóa bài viết/video cùng toàn bộ dữ liệu liên quan (likes, comments, files). Yêu cầu đăng nhập chính chủ hoặc quyền Admin."
+)
+def delete_video_post(
+    video_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return services.delete_video(
+        db=db,
+        video_id=video_id,
+        current_user=current_user
+    )

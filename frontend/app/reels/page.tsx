@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { reels } from "@/lib/data";
 import { ReelCard } from "@/components/reel-card";
-import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark, Loader2 } from "lucide-react";
+import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 interface Comment {
   id: string;
+  userId?: number;
   user: {
     name: string;
     username: string;
@@ -70,6 +71,7 @@ export default function ReelsPage() {
           const data = await response.json();
           const mapped = data.items.map((item: any) => ({
             id: String(item.id),
+            reviewerId: item.reviewer_id,
             user: {
               name: item.user?.full_name || "Người dùng",
               username: item.user?.username || `user_${item.reviewer_id}`,
@@ -169,6 +171,7 @@ export default function ReelsPage() {
           const data = await response.json();
           const mapped = data.map((c: any) => ({
             id: String(c.id),
+            userId: c.user_id,
             user: {
               name: c.user?.full_name || "Người dùng",
               username: c.user?.username || `user_${c.user_id}`,
@@ -179,6 +182,7 @@ export default function ReelsPage() {
             likes: c.likes_count,
             replies: c.replies ? c.replies.map((r: any) => ({
               id: String(r.id),
+              userId: r.user_id,
               user: {
                 name: r.user?.full_name || "Người dùng",
                 username: r.user?.username || `user_${r.user_id}`,
@@ -327,6 +331,51 @@ export default function ReelsPage() {
             >
               <span>💬 Phản hồi</span>
             </button>
+            {user && (user.id === Number(comment.userId) || user.role === "admin") && (
+              <button
+                onClick={async () => {
+                  if (!confirm("Bạn có chắc chắn muốn xóa bình luận này không?")) return;
+                  try {
+                    const response = await fetch(`/api/interact/comments/${comment.id}`, {
+                      method: "DELETE",
+                      headers: {
+                        "Authorization": `Bearer ${token}`
+                      }
+                    });
+                    if (response.ok) {
+                      setActiveComments(prev => {
+                        const removeComment = (cList: Comment[]): Comment[] => {
+                          return cList
+                            .filter(c => c.id !== comment.id)
+                            .map(c => {
+                              if (c.replies && c.replies.length > 0) {
+                                return { ...c, replies: removeComment(c.replies) };
+                              }
+                              return c;
+                            });
+                        };
+                        return removeComment(prev);
+                      });
+                      setReelsList(prev => prev.map(r => {
+                        if (r.id === activeReel.id) {
+                          return { ...r, comments: Math.max(0, r.comments - 1) };
+                        }
+                        return r;
+                      }));
+                    } else {
+                      const errData = await response.json();
+                      alert(errData.detail || "Không thể xóa bình luận.");
+                    }
+                  } catch (err) {
+                    console.error("Lỗi khi xóa bình luận:", err);
+                  }
+                }}
+                className="hover:text-red-500 text-red-500/80 transition-colors cursor-pointer flex items-center gap-0.5"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Xóa</span>
+              </button>
+            )}
           </div>
 
           {/* Child replies */}
@@ -433,7 +482,17 @@ export default function ReelsPage() {
                     return r;
                   }));
                 }}
+                onDelete={() => {
+                  setReelsList(prev => {
+                    const filtered = prev.filter(r => r.id !== reel.id);
+                    if (activeIndex >= filtered.length && filtered.length > 0) {
+                      setActiveIndex(filtered.length - 1);
+                    }
+                    return filtered;
+                  });
+                }}
               />
+
             </div>
           ))}
         </div>

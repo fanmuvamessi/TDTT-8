@@ -31,13 +31,16 @@ import {
   Smile,
   Send,
   MessageCircle,
-  Share2
+  Share2,
+  MoreHorizontal,
+  Trash2
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface Comment {
   id: string;
+  userId?: number;
   user: {
     name: string;
     username: string;
@@ -60,7 +63,9 @@ export default function HomePage() {
   const [postsList, setPostsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>([]);
+  const [showModalMenu, setShowModalMenu] = useState(false);
   const pendingLikes = useRef<Record<string, boolean>>({});
+
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -72,6 +77,7 @@ export default function HomePage() {
           const data = await response.json();
           const mapped = data.items.map((item: any) => ({
             id: String(item.id),
+            reviewerId: item.reviewer_id,
             user: {
               name: item.user?.full_name || "Người dùng",
               username: item.user?.username || `user_${item.reviewer_id}`,
@@ -93,6 +99,7 @@ export default function HomePage() {
             isSaved: false
           }));
           setPostsList(mapped);
+
         }
       } catch (err) {
         console.error("Lỗi khi tải bài viết từ API:", err);
@@ -153,6 +160,7 @@ export default function HomePage() {
           const data = await response.json();
           const mapped = data.map((c: any) => ({
             id: String(c.id),
+            userId: c.user_id,
             user: {
               name: c.user?.full_name || "Người dùng",
               username: c.user?.username || `user_${c.user_id}`,
@@ -163,6 +171,7 @@ export default function HomePage() {
             likes: c.likes_count,
             replies: c.replies ? c.replies.map((r: any) => ({
               id: String(r.id),
+              userId: r.user_id,
               user: {
                 name: r.user?.full_name || "Người dùng",
                 username: r.user?.username || `user_${r.user_id}`,
@@ -398,7 +407,11 @@ export default function HomePage() {
                       return p;
                     }));
                   }}
+                  onDelete={() => {
+                    setPostsList(prev => prev.filter(p => p.id !== post.id));
+                  }}
                 />
+
               ))
             ) : (
               <div className="text-center py-16 px-4 bg-card rounded-3xl border border-border/60 shadow-xs max-w-md mx-auto my-4 space-y-4">
@@ -733,6 +746,51 @@ export default function HomePage() {
                         >
                           <span>💬 Phản hồi</span>
                         </button>
+                        {user && (user.id === Number(comment.userId) || user.role === "admin") && (
+                          <button
+                            onClick={async () => {
+                              if (!confirm("Bạn có chắc chắn muốn xóa bình luận này không?")) return;
+                              try {
+                                const response = await fetch(`/api/interact/comments/${comment.id}`, {
+                                  method: "DELETE",
+                                  headers: {
+                                    "Authorization": `Bearer ${token}`
+                                  }
+                                });
+                                if (response.ok) {
+                                  setActiveComments(prev => {
+                                    const removeComment = (cList: Comment[]): Comment[] => {
+                                      return cList
+                                        .filter(c => c.id !== comment.id)
+                                        .map(c => {
+                                          if (c.replies && c.replies.length > 0) {
+                                            return { ...c, replies: removeComment(c.replies) };
+                                          }
+                                          return c;
+                                        });
+                                    };
+                                    return removeComment(prev);
+                                  });
+                                  setPostsList(prev => prev.map(p => {
+                                    if (p.id === activePost.id) {
+                                      return { ...p, comments: Math.max(0, p.comments - 1) };
+                                    }
+                                    return p;
+                                  }));
+                                } else {
+                                  const errData = await response.json();
+                                  alert(errData.detail || "Không thể xóa bình luận.");
+                                }
+                              } catch (err) {
+                                console.error("Lỗi khi xóa bình luận:", err);
+                              }
+                            }}
+                            className="hover:text-red-500 text-red-500/80 transition-colors cursor-pointer flex items-center gap-0.5"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Xóa</span>
+                          </button>
+                        )}
                       </div>
 
                       {/* Child replies */}
@@ -751,18 +809,71 @@ export default function HomePage() {
                   {/* Scrollable Modal Body */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
                     {/* Header */}
-                    <div className="flex items-center gap-3 pb-3 border-b border-border/30">
-                      <Avatar className="w-9 h-9 ring-2 ring-primary/20">
-                        <AvatarImage src={activePost.user.avatar} alt={activePost.user.name} />
-                        <AvatarFallback>{activePost.user.name[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-xs text-muted-foreground/75 font-semibold">@{activePost.user.username}</p>
-                        <div className="flex items-center gap-1 text-[13px] font-extrabold text-foreground mt-0.5 hover:text-primary transition-colors cursor-pointer">
-                          <MapPin className="w-3 h-3 text-primary fill-primary/15" />
-                          <span>{activePost.restaurant.name}</span>
+                    <div className="flex items-center justify-between pb-3 border-b border-border/30 relative">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-9 h-9 ring-2 ring-primary/20">
+                          <AvatarImage src={activePost.user.avatar} alt={activePost.user.name} />
+                          <AvatarFallback>{activePost.user.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-xs text-muted-foreground/75 font-semibold">@{activePost.user.username}</p>
+                          <div className="flex items-center gap-1 text-[13px] font-extrabold text-foreground mt-0.5 hover:text-primary transition-colors cursor-pointer">
+                            <MapPin className="w-3 h-3 text-primary fill-primary/15" />
+                            <span>{activePost.restaurant.name}</span>
+                          </div>
                         </div>
                       </div>
+
+                      {user && (user.id === activePost.reviewerId || user.role === "admin") && (
+                        <div className="relative mr-8">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full hover:bg-secondary/80"
+                            onClick={() => setShowModalMenu(!showModalMenu)}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                          
+                          {showModalMenu && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-35" 
+                                onClick={() => setShowModalMenu(false)}
+                              />
+                              <div className="absolute right-0 mt-1 w-36 bg-card border border-border/80 rounded-xl shadow-lg py-1.5 z-45 animate-in fade-in slide-in-from-top-1 duration-150">
+                                <button
+                                  onClick={async () => {
+                                    setShowModalMenu(false);
+                                    if (!confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
+                                    try {
+                                      const response = await fetch(`/api/content/videos/${activePost.id}`, {
+                                        method: "DELETE",
+                                        headers: {
+                                          "Authorization": `Bearer ${token}`
+                                        }
+                                      });
+                                      if (response.ok) {
+                                        setSelectedPostId(null);
+                                        setPostsList(prev => prev.filter(p => p.id !== activePost.id));
+                                      } else {
+                                        const errData = await response.json();
+                                        alert(errData.detail || "Không thể xóa bài viết.");
+                                      }
+                                    } catch (err) {
+                                      console.error("Lỗi khi xóa bài viết:", err);
+                                    }
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Xóa bài viết</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Proportional dynamic aspect ratio photo matching original image */}

@@ -100,3 +100,17 @@ def get_status():
         "status": "active",
         "description": "Quản lý tìm kiếm không gian (Geo-Search) & tương tác (Like/Comment)"
     }
+
+@router.delete(
+    "/comments/{comment_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Xóa bình luận cùng câu trả lời",
+    description="Xóa bình luận và các câu trả lời kèm theo. Yêu cầu chính chủ hoặc admin."
+)
+def delete_comment_endpoint(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return services.delete_comment(db=db, comment_id=comment_id, current_user=current_user)
+

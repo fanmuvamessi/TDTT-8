@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 interface FoodPostProps {
   post: {
     id: string;
+    reviewerId?: number;
     user: {
       name: string;
       username: string;
@@ -35,12 +36,39 @@ interface FoodPostProps {
   onPostClick?: () => void;
   onCommentClick?: () => void;
   onLikeToggle?: (isLiked: boolean, likesCount: number) => void;
+  onDelete?: () => void;
 }
 
-export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle }: FoodPostProps) {
-  const { token } = useAuth();
+export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle, onDelete }: FoodPostProps) {
+  const { token, user } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
   const [isSaved, setIsSaved] = useState(post.isSaved);
   const isLikePending = useRef(false);
+
+  const canDelete = user && (user.id === post.reviewerId || user.role === "admin");
+
+  const handleDeletePost = async () => {
+    if (!token) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
+    try {
+      const response = await fetch(`/api/content/videos/${post.id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        if (onDelete) {
+          onDelete();
+        }
+      } else {
+        const errData = await response.json();
+        alert(errData.detail || "Không thể xóa bài viết.");
+      }
+    } catch (err) {
+      console.error("Lỗi khi xóa bài viết:", err);
+    }
+  };
 
   const handleLike = async () => {
     if (!token || isLikePending.current) return;
@@ -77,6 +105,7 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
     setIsSaved(!isSaved);
   };
 
+
   const formatNumber = (num: number) => {
     if (num >= 1000) {
       return (num / 1000).toFixed(1) + "K";
@@ -87,7 +116,7 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   return (
     <article className="bg-card/70 backdrop-blur-md rounded-3xl border border-border/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] mb-6 overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/20">
       {/* Header */}
-      <div className="flex items-center justify-between p-3">
+      <div className="flex items-center justify-between p-3 relative">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 ring-2 ring-primary/20">
             <AvatarImage src={post.user.avatar} alt={post.user.name} />
@@ -104,10 +133,42 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <MoreHorizontal className="w-5 h-5" />
-        </Button>
+        
+        {canDelete && (
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full hover:bg-secondary/80"
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </Button>
+            
+            {showMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-30" 
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 mt-1 w-36 bg-card border border-border/80 rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleDeletePost();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa bài viết</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
 
       {/* Image */}
       <div 

@@ -2,7 +2,7 @@
  
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical, Volume2, VolumeX } from "lucide-react";
+import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical, Volume2, VolumeX, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 interface ReelCardProps {
   reel: {
     id: string;
+    reviewerId?: number;
     user: {
       name: string;
       username: string;
@@ -35,13 +36,16 @@ interface ReelCardProps {
   isMuted: boolean;
   onMuteToggle: () => void;
   onLikeToggle?: (isLiked: boolean, likesCount: number) => void;
+  onDelete?: () => void;
 }
 
-export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = false, isMuted, onMuteToggle, onLikeToggle }: ReelCardProps) {
-  const { token } = useAuth();
+export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = false, isMuted, onMuteToggle, onLikeToggle, onDelete }: ReelCardProps) {
+  const { token, user } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(reel.isLiked || false);
   const [likes, setLikes] = useState(reel.likes);
   const [isPlaying, setIsPlaying] = useState(isActive);
+
 
   useEffect(() => {
     setIsLiked(reel.isLiked || false);
@@ -100,6 +104,31 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
       }
     } catch (err) {
       console.error("Lỗi khi thả tim Reels:", err);
+    }
+  };
+
+  const canDelete = user && (user.id === reel.reviewerId || user.role === "admin");
+
+  const handleDeleteReel = async () => {
+    if (!token) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa reel này không?")) return;
+    try {
+      const response = await fetch(`/api/content/videos/${reel.id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        if (onDelete) {
+          onDelete();
+        }
+      } else {
+        const errData = await response.json();
+        alert(errData.detail || "Không thể xóa reel.");
+      }
+    } catch (err) {
+      console.error("Lỗi khi xóa reel:", err);
     }
   };
 
@@ -260,9 +289,40 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
           )}
 
           {/* More */}
-          <button className="w-10 h-10 bg-black/35 hover:bg-black/50 text-white md:bg-muted/70 md:hover:bg-muted md:text-foreground dark:md:bg-white/15 dark:md:hover:bg-white/25 dark:md:text-white backdrop-blur-xs rounded-full flex items-center justify-center transition-colors">
-            <MoreVertical className="w-5 h-5 text-white md:text-foreground dark:md:text-white" />
-          </button>
+          {canDelete && (
+            <div className="relative">
+              <button 
+                onClick={() => setShowMenu(!showMenu)}
+                className={cn(
+                  "w-10 h-10 bg-black/35 hover:bg-black/50 text-white md:bg-muted/70 md:hover:bg-muted md:text-foreground dark:md:bg-white/15 dark:md:hover:bg-white/25 dark:md:text-white backdrop-blur-xs rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer",
+                  showMenu && "ring-2 ring-primary/60"
+                )}
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              
+              {showMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-30" 
+                    onClick={() => setShowMenu(false)}
+                  />
+                  <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-36 bg-card border border-border/80 rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in slide-in-from-bottom-1 md:slide-in-from-top-1 duration-150">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        handleDeleteReel();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa bài viết</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
       </div>

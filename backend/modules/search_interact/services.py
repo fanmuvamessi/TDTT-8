@@ -218,3 +218,32 @@ def geo_search_merchants(
         })
         
     return merchants_list
+
+def delete_comment(db: Session, comment_id: int, current_user) -> dict:
+    """
+    Xóa bình luận cùng toàn bộ replies con và likes đi kèm.
+    Chỉ cho phép tác giả bình luận hoặc Admin xóa.
+    """
+    # 1. Tìm comment
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bình luận không tồn tại."
+        )
+
+    # 2. Kiểm tra quyền sở hữu (chính chủ hoặc admin)
+    if comment.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền xóa bình luận này."
+        )
+
+    # 3. Thực hiện xóa bình luận (SQLite cascade tự động dọn comment_likes và replies con)
+    db.delete(comment)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Đã xóa bình luận thành công."
+    }

@@ -241,3 +241,71 @@ def increment_campaign_impressions(campaign_ids: list[int]):
         print(f"[CONTENT] Lỗi khi tăng impressions trong background task: {e}")
     finally:
         db.close()
+
+def delete_video(db: Session, video_id: int, current_user) -> dict:
+    """
+    Xóa video review (bài viết) cùng toàn bộ dữ liệu liên quan (likes, comments, R2 files).
+    """
+    # 1. Tìm video
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bài viết/Video không tồn tại trong hệ thống."
+        )
+
+    # 2. Kiểm tra quyền sở hữu (chỉ chính chủ hoặc admin mới được xóa)
+    if video.reviewer_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền xóa bài viết này."
+        )
+
+    # 3. Trích xuất key lưu trữ Cloudflare R2 từ video_url và thumbnail_url để xóa file vật lý
+    r2_public_url = settings.CLOUDFLARE_R2_PUBLIC_URL
+    
+    def extract_r2_key(url: Optional[str]) -> Optional[str]:
+        if not url:
+            return None
+        # Nếu url chứa r2_public_url
+        if r2_public_url and r2_public_url in url:
+            parts = url.split(r2_public_url)
+            if len(parts) > 1:
+                return parts[1].lstrip("/")
+        # fallback tìm folder "general", "videos", "images", "thumbnails"
+        for folder in ["general", "videos", "images", "thumbnails"]:
+            if f"/{folder}/" in url:
+                parts = url.split(f"/{folder}/")
+                if len(parts) > 1:
+                    return f"{folder}/{parts[1]}"
+        return None
+
+    # Xóa file video/image trên R2
+    video_key = extract_r2_key(video.video_url)
+    if video_key:
+        try:
+            s3_client = get_r2_client()
+            s3_client.delete_object(Bucket=settings.CLOUDFLARE_R2_BUCKET_NAME, Key=video_key)
+            print(f"[CONTENT] Đã xóa file video trên R2: {video_key}")
+        except Exception as e:
+            print(f"[CONTENT] Lỗi khi xóa file video trên R2: {str(e)}")
+
+    # Xóa file thumbnail trên R2 (nếu có)
+    if video.thumbnail_url:
+        thumbnail_key = extract_r2_key(video.thumbnail_url)
+        if thumbnail_key:
+            try:
+                s3_client = get_r2_client()
+                s3_client.delete_object(Bucket=settings.CLOUDFLARE_R2_BUCKET_NAME, Key=thumbnail_key)
+                print(f"[CONTENT] Đã xóa file thumbnail trên R2: {thumbnail_key}")
+            except Exception as e:
+                print(f"[CONTENT] Lỗi khi xóa file thumbnail trên R2: {str(e)}")
+
+    # 4. Xóa video khỏi CSDL (Cascade tự động xóa likes, comments, replies, comment_likes)
+    db.delete(video)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Đã xóa bài viết và toàn bộ dữ liệu liên quan thành công."
+    }

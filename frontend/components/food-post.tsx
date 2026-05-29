@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface FoodPostProps {
   post: {
@@ -33,16 +34,43 @@ interface FoodPostProps {
   priority?: boolean;
   onPostClick?: () => void;
   onCommentClick?: () => void;
+  onLikeToggle?: (isLiked: boolean, likesCount: number) => void;
 }
 
-export function FoodPost({ post, priority = false, onPostClick, onCommentClick }: FoodPostProps) {
-  const [isLiked, setIsLiked] = useState(post.isLiked);
+export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle }: FoodPostProps) {
+  const { token } = useAuth();
   const [isSaved, setIsSaved] = useState(post.isSaved);
-  const [likes, setLikes] = useState(post.likes);
+  const isLikePending = useRef(false);
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikes(isLiked ? likes - 1 : likes + 1);
+  const handleLike = async () => {
+    if (!token || isLikePending.current) return;
+    try {
+      isLikePending.current = true;
+      const nextLiked = !post.isLiked;
+      const nextLikes = nextLiked ? post.likes + 1 : post.likes - 1;
+      
+      // Update parent state instantly for snappy UX!
+      if (onLikeToggle) {
+        onLikeToggle(nextLiked, nextLikes);
+      }
+
+      const res = await fetch(`/api/interact/videos/${post.id}/like`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (onLikeToggle) {
+          onLikeToggle(data.liked, data.likes_count);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi khi thả tim bài viết:", err);
+    } finally {
+      isLikePending.current = false;
+    }
   };
 
   const handleSave = () => {
@@ -120,12 +148,12 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick }
               <Heart
                 className={cn(
                   "w-6 h-6 transition-all",
-                  isLiked
+                  post.isLiked
                     ? "text-red-500 fill-red-500 scale-110"
                     : "text-foreground group-hover:scale-110"
                 )}
               />
-              <span className="text-sm font-medium">{formatNumber(likes)}</span>
+              <span className="text-sm font-medium">{formatNumber(post.likes)}</span>
             </button>
             <button 
               onClick={onCommentClick || onPostClick}

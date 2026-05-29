@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/header";
 import { CategoryFilter } from "@/components/category-filter";
 import { FoodPost } from "@/components/food-post";
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { 
   Home, 
   Play, 
@@ -59,11 +60,14 @@ export default function HomePage() {
   const [postsList, setPostsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>([]);
+  const pendingLikes = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch("/api/content/videos?post_type=image");
+        const response = await fetch("/api/content/videos?post_type=image", {
+          headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        });
         if (response.ok) {
           const data = await response.json();
           const mapped = data.items.map((item: any) => ({
@@ -85,7 +89,7 @@ export default function HomePage() {
             comments: item.comments_count || 0,
             saves: Math.floor(Math.random() * 12) + 3,
             createdAt: "Vừa xong",
-            isLiked: false,
+            isLiked: item.is_liked || false,
             isSaved: false
           }));
           setPostsList(mapped);
@@ -119,7 +123,7 @@ export default function HomePage() {
 
     fetchPosts();
     fetchSuggestions();
-  }, []);
+  }, [token]);
 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [activeComments, setActiveComments] = useState<Comment[]>([]);
@@ -127,6 +131,14 @@ export default function HomePage() {
   const [newCommentText, setNewCommentText] = useState("");
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [modalImageAspect, setModalImageAspect] = useState<number | null>(null);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const postId = searchParams.get("post_id");
+    if (postId) {
+      setSelectedPostId(postId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedPostId) {
@@ -338,6 +350,14 @@ export default function HomePage() {
                       if (inputEl) inputEl.focus();
                     }, 150);
                   }}
+                  onLikeToggle={(isLiked, likesCount) => {
+                    setPostsList(prev => prev.map(p => {
+                      if (p.id === post.id) {
+                        return { ...p, isLiked, likes: likesCount };
+                      }
+                      return p;
+                    }));
+                  }}
                 />
               ))
             ) : (
@@ -493,17 +513,47 @@ export default function HomePage() {
               const isLiked = activePost.isLiked;
               const isSaved = activePost.isSaved;
 
-              const handleLikeDetail = () => {
-                setPostsList(prev => prev.map(p => {
-                  if (p.id === activePost.id) {
-                    return {
-                      ...p,
-                      isLiked: !p.isLiked,
-                      likes: p.isLiked ? p.likes - 1 : p.likes + 1
-                    };
+              const handleLikeDetail = async () => {
+                if (!token || pendingLikes.current[activePost.id]) return;
+                try {
+                  pendingLikes.current[activePost.id] = true;
+                  // Toggle state locally first for instant snappy UX!
+                  setPostsList(prev => prev.map(p => {
+                    if (p.id === activePost.id) {
+                      return {
+                        ...p,
+                        isLiked: !p.isLiked,
+                        likes: p.isLiked ? p.likes - 1 : p.likes + 1
+                      };
+                    }
+                    return p;
+                  }));
+                  
+                  // Call backend API in background to persist it!
+                  const res = await fetch(`/api/interact/videos/${activePost.id}/like`, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${token}`
+                    }
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setPostsList(prev => prev.map(p => {
+                      if (p.id === activePost.id) {
+                        return {
+                          ...p,
+                          likes: data.likes_count,
+                          isLiked: data.liked
+                        };
+                      }
+                      return p;
+                    }));
                   }
-                  return p;
-                }));
+                } catch (err) {
+                  console.error("Lỗi khi thả tim bài viết:", err);
+                } finally {
+                  pendingLikes.current[activePost.id] = false;
+                }
               };
 
               const handleSaveDetail = () => {
@@ -730,11 +780,11 @@ export default function HomePage() {
                         className={cn(
                           "flex-1 py-2 flex items-center justify-center gap-1.5 text-[10px] font-extrabold rounded-lg transition-all active:scale-95 cursor-pointer",
                           isLiked 
-                            ? "text-orange-500 bg-orange-500/10" 
+                            ? "text-red-500 bg-red-500/10" 
                             : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                         )}
                       >
-                        <span className="text-sm">🤤</span>
+                        <Heart className={cn("w-3.5 h-3.5 transition-all", isLiked ? "text-red-500 fill-red-500 scale-110" : "text-muted-foreground")} />
                         <span>Thèm ({activePost.likes})</span>
                       </button>
 

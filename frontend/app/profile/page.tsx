@@ -225,17 +225,43 @@ export default function ProfilePage() {
 
         {/* Premium Grid with Spacing & Rounded corners */}
         {(() => {
-          const displayedVideos = profileStats?.videos?.filter((video: any) => {
-            if (activeTab === "posts") return video.post_type === "image";
-            if (activeTab === "reels") return video.post_type === "video";
-            return true; // saved or liked tabs
-          }) || [];
+          let displayedVideos: any[] = [];
+          if (activeTab === "posts") {
+            displayedVideos = profileStats?.videos?.filter((video: any) => video.post_type === "image") || [];
+          } else if (activeTab === "reels") {
+            displayedVideos = profileStats?.videos?.filter((video: any) => video.post_type === "video") || [];
+          } else if (activeTab === "saved") {
+            displayedVideos = profileStats?.saved_videos || [];
+          } else if (activeTab === "liked") {
+            displayedVideos = profileStats?.liked_videos || [];
+          }
+
+          const getEmptyTitle = () => {
+            if (activeTab === "posts") return "Không có bài viết hình ảnh nào";
+            if (activeTab === "reels") return "Không có Reels video nào";
+            if (activeTab === "saved") return "Không có bài viết đã lưu";
+            return "Không có bài viết đã thích";
+          };
+
+          const getEmptyDesc = () => {
+            if (activeTab === "posts") return "Bạn chưa đăng bài đánh giá hình ảnh nào. Hãy chia sẻ món ngon đầu tiên nhé!";
+            if (activeTab === "reels") return "Bạn chưa đăng video Reels ngắn nào. Hãy chia sẻ video review đầu tiên nhé!";
+            if (activeTab === "saved") return "Bạn chưa lưu bài viết hay video nào. Hãy khám phá các quán ăn ngon trên bảng tin và lưu nhé!";
+            return "Bạn chưa thả tim bài viết hay video nào. Hãy tương tác nhiều hơn với cộng đồng nhé!";
+          };
 
           return (
             <div className="grid grid-cols-3 gap-3 px-4 py-4">
               {displayedVideos.map((video: any, index: number) => (
                 <button
                   key={video.id}
+                  onClick={() => {
+                    if (video.post_type === "video") {
+                      router.push(`/reels?id=${video.id}`);
+                    } else {
+                      router.push(`/?post_id=${video.id}`);
+                    }
+                  }}
                   className="relative aspect-square group rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02]"
                 >
                   <Image
@@ -260,12 +286,10 @@ export default function ProfilePage() {
               {displayedVideos.length === 0 && (
                 <div className="col-span-3 text-center py-16 px-4 bg-secondary/20 rounded-3xl border border-dashed border-border/80 my-4 space-y-2">
                   <p className="font-bold text-sm text-foreground">
-                    {activeTab === "posts" ? "Không có bài viết hình ảnh nào" : "Không có Reels video nào"}
+                    {getEmptyTitle()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {activeTab === "posts" 
-                      ? "Bạn chưa đăng bài đánh giá hình ảnh nào. Hãy chia sẻ món ngon đầu tiên nhé!" 
-                      : "Bạn chưa đăng video Reels ngắn nào. Hãy chia sẻ video review đầu tiên nhé!"}
+                    {getEmptyDesc()}
                   </p>
                 </div>
               )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { reels } from "@/lib/data";
 import { ReelCard } from "@/components/reel-card";
 import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark, Loader2 } from "lucide-react";
@@ -62,7 +63,9 @@ export default function ReelsPage() {
   useEffect(() => {
     const fetchReels = async () => {
       try {
-        const response = await fetch("/api/content/videos?post_type=video");
+        const response = await fetch("/api/content/videos?post_type=video", {
+          headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        });
         if (response.ok) {
           const data = await response.json();
           const mapped = data.items.map((item: any) => ({
@@ -82,7 +85,8 @@ export default function ReelsPage() {
             likes: item.likes_count,
             comments: item.comments_count || 0,
             shares: 0,
-            music: "Âm thanh gốc - " + (item.user?.full_name || "Blogger")
+            music: "Âm thanh gốc - " + (item.user?.full_name || "Blogger"),
+            isLiked: item.is_liked || false
           }));
           setReelsList(mapped);
         }
@@ -93,7 +97,27 @@ export default function ReelsPage() {
       }
     };
     fetchReels();
-  }, []);
+  }, [token]);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (reelsList.length === 0) return;
+    const targetId = searchParams.get("id");
+    if (targetId) {
+      const idx = reelsList.findIndex((r: any) => String(r.id) === String(targetId));
+      if (idx !== -1) {
+        setActiveIndex(idx);
+        setTimeout(() => {
+          if (containerRef.current) {
+            const children = containerRef.current.children;
+            if (children && children[idx]) {
+              children[idx].scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }
+        }, 100);
+      }
+    }
+  }, [searchParams, reelsList]);
 
   // Auto detect mobile/desktop client-side
   useEffect(() => {
@@ -401,6 +425,14 @@ export default function ReelsPage() {
                 isCommentsOpen={showComments}
                 isMuted={isMuted}
                 onMuteToggle={toggleMute}
+                onLikeToggle={(isLiked, likesCount) => {
+                  setReelsList(prev => prev.map(r => {
+                    if (r.id === reel.id) {
+                      return { ...r, isLiked, likes: likesCount };
+                    }
+                    return r;
+                  }));
+                }}
               />
             </div>
           ))}

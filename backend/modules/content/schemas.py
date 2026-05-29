@@ -53,6 +53,7 @@ class VideoResponse(BaseModel):
     tagged_merchant_id: Optional[int] = None
     created_at: datetime
     is_ads: Optional[bool] = False
+    is_liked: Optional[bool] = False
     
     # Các trường lồng nhau ánh xạ theo thiết kế của Frontend
     user: Optional[VideoUserResponse] = None
@@ -83,6 +84,7 @@ class VideoResponse(BaseModel):
             "tagged_merchant_id": data.tagged_merchant_id,
             "created_at": data.created_at,
             "is_ads": getattr(data, "is_ads", False),
+            "is_liked": getattr(data, "is_liked", False),
         }
         
         if reviewer:

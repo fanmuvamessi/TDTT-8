@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend.core.database import get_db
-from backend.core.security import get_current_user, RoleChecker
+from backend.core.security import get_current_user, RoleChecker, get_current_user_optional
 from backend.core.all_models import User
 from backend.modules.content import services, schemas
 
@@ -63,9 +63,11 @@ def list_videos(
     limit: int = Query(8, ge=1, le=100, description="Số lượng bản ghi tối đa trả về"),
     post_type: Optional[str] = Query(None, description="Lọc theo loại post (video hoặc image)"),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
-    feed_data = services.get_video_feed(db=db, cursor=cursor, limit=limit, post_type=post_type)
+    user_id = current_user.id if current_user else None
+    feed_data = services.get_video_feed(db=db, cursor=cursor, limit=limit, post_type=post_type, current_user_id=user_id)
     
     # Kích hoạt tăng lượt impressions của campaign bất đồng bộ qua background task
     if feed_data.get("campaigns_to_track") and background_tasks:

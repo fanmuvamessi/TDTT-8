@@ -126,7 +126,7 @@ def get_videos(db: Session, skip: int = 0, limit: int = 10) -> list[Video]:
     """
     return db.query(Video).offset(skip).limit(limit).all()
 
-def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8, post_type: Optional[str] = None) -> dict:
+def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8, post_type: Optional[str] = None, current_user_id: Optional[int] = None) -> dict:
     """
     Lấy danh sách video (cho Feed) có phân trang bằng Cursor
     và tự động trộn quảng cáo (Campaign) theo tỷ lệ 4:1.
@@ -167,7 +167,15 @@ def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8, po
     campaigns_to_track = []
     ad_index = 0
     
+    # Lấy danh sách ID video đã thích của user hiện tại
+    liked_video_ids = set()
+    if current_user_id:
+        from backend.core.all_models import Like
+        likes = db.query(Like.video_id).filter(Like.user_id == current_user_id).all()
+        liked_video_ids = {like[0] for like in likes}
+    
     for i, video in enumerate(organic_videos):
+        video.is_liked = video.id in liked_video_ids
         mixed_items.append(video)
         
         # Cứ sau 4 video thường, nếu có QC hoạt động thì chèn vào

@@ -60,6 +60,8 @@ class UserProfileResponse(BaseModel):
     saved_count: int = 0
     likes_received_count: int = 0
     videos: List[VideoMinResponse] = []
+    saved_videos: List[VideoMinResponse] = []
+    liked_videos: List[VideoMinResponse] = []
 
     class Config:
         from_attributes = True

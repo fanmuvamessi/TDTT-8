@@ -120,3 +120,24 @@ class RoleChecker:
             )
         return current_user
 
+
+def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Xác thực tuỳ chọn người dùng.
+    Trả về User nếu token hợp lệ, ngược lại trả về None mà không chặn request (no 401).
+    """
+    if not credentials or not credentials.credentials:
+        return None
+    token = credentials.credentials
+    try:
+        decoded_token = auth.verify_id_token(token)
+        uid = decoded_token.get("uid")
+        if uid:
+            return db.query(User).filter(User.firebase_uid == uid).first()
+    except Exception:
+        pass
+    return None
+

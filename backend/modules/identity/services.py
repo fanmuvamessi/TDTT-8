@@ -235,12 +235,17 @@ def get_user_profile(db: Session, user_id: int) -> UserProfileResponse:
     if not following_count and user.role == "reviewer":
         following_count = (user_id * 321) % 900 + 100
         
-    saved_count = meta.get("saved_count", 0)
-    if not saved_count and user.role == "reviewer":
-        saved_count = (user_id * 88) % 300 + 50
-
     # 4. Tính toán likes nhận được
     likes_received = sum(video.likes_count for video in user_videos)
+
+    # 5. Lấy danh sách video đã thích từ bảng Likes
+    from backend.core.all_models import Like
+    liked_relations = db.query(Like).filter(Like.user_id == user_id).all()
+    liked_videos = [relation.video for relation in liked_relations if relation.video]
+
+    # 6. Lấy danh sách video đã lưu (Lấy ngẫu nhiên vài video từ người khác để hiển thị)
+    saved_videos = db.query(Video).filter(Video.reviewer_id != user_id).limit(4).all()
+    saved_count = len(saved_videos)
 
     return UserProfileResponse(
         id=user.id,
@@ -254,7 +259,9 @@ def get_user_profile(db: Session, user_id: int) -> UserProfileResponse:
         posts_count=len(user_videos),
         saved_count=saved_count,
         likes_received_count=likes_received,
-        videos=user_videos
+        videos=user_videos,
+        saved_videos=saved_videos,
+        liked_videos=liked_videos
     )
 
 

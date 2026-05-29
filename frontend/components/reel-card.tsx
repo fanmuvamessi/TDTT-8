@@ -1,11 +1,12 @@
 "use client";
-
+ 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical, Volume2, VolumeX } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ReelCardProps {
   reel: {
@@ -26,18 +27,26 @@ interface ReelCardProps {
     comments: number;
     shares: number;
     music: string;
+    isLiked?: boolean;
   };
   isActive: boolean;
   onCommentClick?: () => void;
   isCommentsOpen?: boolean;
   isMuted: boolean;
   onMuteToggle: () => void;
+  onLikeToggle?: (isLiked: boolean, likesCount: number) => void;
 }
 
-export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = false, isMuted, onMuteToggle }: ReelCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
+export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = false, isMuted, onMuteToggle, onLikeToggle }: ReelCardProps) {
+  const { token } = useAuth();
+  const [isLiked, setIsLiked] = useState(reel.isLiked || false);
   const [likes, setLikes] = useState(reel.likes);
   const [isPlaying, setIsPlaying] = useState(isActive);
+
+  useEffect(() => {
+    setIsLiked(reel.isLiked || false);
+    setLikes(reel.likes);
+  }, [reel]);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Sync play/pause with isActive and isPlaying states
@@ -62,9 +71,36 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
     onMuteToggle();
   };
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikes(isLiked ? likes - 1 : likes + 1);
+  const handleLike = async () => {
+    if (!token) return;
+    try {
+      const nextLiked = !isLiked;
+      const nextLikes = nextLiked ? likes + 1 : likes - 1;
+      
+      // Update local state instantly for snappy UX
+      setIsLiked(nextLiked);
+      setLikes(nextLikes);
+      if (onLikeToggle) {
+        onLikeToggle(nextLiked, nextLikes);
+      }
+
+      const res = await fetch(`/api/interact/videos/${reel.id}/like`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsLiked(data.liked);
+        setLikes(data.likes_count);
+        if (onLikeToggle) {
+          onLikeToggle(data.liked, data.likes_count);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi khi thả tim Reels:", err);
+    }
   };
 
   const formatNumber = (num: number) => {

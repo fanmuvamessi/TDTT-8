@@ -336,7 +336,47 @@ export default function HomePage() {
           
           {/* Posts Feed container */}
           <div className="max-w-lg mx-auto py-4 px-4 md:px-0">
-            {filteredPosts.length > 0 ? (
+            {isLoading ? (
+              <div className="space-y-6">
+                {[1, 2].map((i) => (
+                  <div 
+                    key={`skeleton-${i}`} 
+                    className="bg-card/70 backdrop-blur-md rounded-3xl border border-border/80 p-4 space-y-4 animate-pulse shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)]"
+                  >
+                    {/* Header Skeleton */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary/80 dark:bg-muted/30" />
+                        <div className="space-y-1.5">
+                          <div className="h-3 bg-secondary/80 dark:bg-muted/30 rounded-full w-24 animate-pulse" />
+                          <div className="h-3 bg-secondary/80 dark:bg-muted/30 rounded-full w-32 animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-secondary/80 dark:bg-muted/30" />
+                    </div>
+
+                    {/* Image Skeleton */}
+                    <div className="relative aspect-square rounded-2xl bg-secondary/60 dark:bg-muted/20 overflow-hidden flex items-center justify-center border border-border/10" />
+
+                    {/* Actions and Content Skeleton */}
+                    <div className="space-y-3.5 pt-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-4">
+                          <div className="w-14 h-5 bg-secondary/80 dark:bg-muted/30 rounded-full" />
+                          <div className="w-14 h-5 bg-secondary/80 dark:bg-muted/30 rounded-full" />
+                          <div className="w-6 h-6 bg-secondary/80 dark:bg-muted/30 rounded-full" />
+                        </div>
+                        <div className="w-6 h-6 bg-secondary/80 dark:bg-muted/30 rounded-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3.5 bg-secondary/80 dark:bg-muted/30 rounded-full w-4/5 animate-pulse" />
+                        <div className="h-3.5 bg-secondary/80 dark:bg-muted/30 rounded-full w-2/3 animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredPosts.length > 0 ? (
               filteredPosts.map((post, index) => (
                 <FoodPost 
                   key={`post-${post.id}-${index}`} 

@@ -8,7 +8,7 @@ from typing import Optional
 from backend.core.config import settings
 from backend.core.all_models import Video, Merchant, Campaign
 from backend.modules.content.schemas import VideoCreate
-from backend.common.pagination import decode_cursor, encode_cursor
+from backend.core.database import SessionLocal, Base
 
 def get_r2_client():
     """
@@ -104,6 +104,7 @@ def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
         description=video_in.description,
         reviewer_id=reviewer_id,
         tagged_merchant_id=tagged_merchant_id,
+        post_type=video_in.post_type or "video",
         status="pending"  # Mặc định chờ kiểm duyệt
     )
     
@@ -125,7 +126,7 @@ def get_videos(db: Session, skip: int = 0, limit: int = 10) -> list[Video]:
     """
     return db.query(Video).offset(skip).limit(limit).all()
 
-def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8) -> dict:
+def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8, post_type: Optional[str] = None) -> dict:
     """
     Lấy danh sách video (cho Feed) có phân trang bằng Cursor
     và tự động trộn quảng cáo (Campaign) theo tỷ lệ 4:1.
@@ -135,6 +136,9 @@ def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8) ->
     
     # 2. Truy vấn video thường (organic)
     query = db.query(Video)
+    if post_type:
+        query = query.filter(Video.post_type == post_type)
+        
     if cursor_data:
         cursor_time, cursor_id = cursor_data
         query = query.filter(
@@ -207,12 +211,16 @@ def get_video_feed(db: Session, cursor: Optional[str] = None, limit: int = 8) ->
         "campaigns_to_track": campaigns_to_track
     }
 
-def increment_campaign_impressions(db: Session, campaign_ids: list[int]):
+from backend.common.pagination import decode_cursor, encode_cursor
+
+def increment_campaign_impressions(campaign_ids: list[int]):
     """
     Tăng impressions_count của các chiến dịch quảng cáo được hiển thị trong tiến trình nền.
+    Tạo và đóng kết nối riêng biệt để tránh tranh chấp khoá (lock) SQLite.
     """
     if not campaign_ids:
         return
+    db = SessionLocal()
     try:
         db.query(Campaign).filter(Campaign.id.in_(campaign_ids)).update(
             {Campaign.impressions_count: Campaign.impressions_count + 1},
@@ -222,4 +230,6 @@ def increment_campaign_impressions(db: Session, campaign_ids: list[int]):
         print(f"[CONTENT] Đã tăng impressions cho các chiến dịch: {campaign_ids}")
     except Exception as e:
         db.rollback()
-        print(f"[CONTENT] Lỗi khi tăng impressions: {e}")
+        print(f"[CONTENT] Lỗi khi tăng impressions trong background task: {e}")
+    finally:
+        db.close()

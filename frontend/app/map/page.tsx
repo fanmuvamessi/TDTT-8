@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { MapPin, Star, Clock, X, Search, ChevronRight, ChevronLeft, Home, Navigation } from "lucide-react";
-import { restaurants } from "@/lib/data";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { Button } from "@/components/ui/button";
 import { CategoryFilter } from "@/components/category-filter";
@@ -28,58 +27,71 @@ const MapView = dynamic(
 );
 
 export default function MapPage() {
-  const [selectedRestaurant, setSelectedRestaurant] = useState<typeof restaurants[0] | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<any | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [restaurantsList, setRestaurantsList] = useState<any[]>([]);
+  const [isFetchingRestaurants, setIsFetchingRestaurants] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const handleSelectRestaurant = (res: typeof restaurants[0] | null) => {
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      setIsFetchingRestaurants(true);
+      try {
+        let url = `/api/interact/search?lat=10.775&lng=106.690&radius=15.0`;
+        if (searchQuery.trim() !== "") {
+          url += `&q=${encodeURIComponent(searchQuery.trim())}`;
+        }
+        if (activeCategory !== "all") {
+          url += `&category=${encodeURIComponent(activeCategory)}`;
+        }
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((item: any) => ({
+            id: String(item.id),
+            name: item.name,
+            address: item.address || "",
+            category: item.category || "Món ăn",
+            lat: item.latitude,
+            lng: item.longitude,
+            rating: item.rating_avg || 4.5,
+            reviews: Math.floor(Math.random() * 200) + 10,
+            isOpen: true,
+            openTime: "08:00 - 22:00",
+            priceRange: "30k - 100k",
+            image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500"
+          }));
+          setRestaurantsList(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách quán ăn bản đồ:", err);
+      } finally {
+        setIsFetchingRestaurants(false);
+      }
+    };
+
+    // Debounce search query by 300ms
+    const delayDebounce = setTimeout(() => {
+      fetchRestaurants();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery, activeCategory]);
+
+  const handleSelectRestaurant = (res: any | null) => {
     setSelectedRestaurant(res);
     if (res && typeof window !== "undefined" && window.innerWidth < 1024) {
       setIsPanelOpen(false);
     }
   };
 
-  // Filter restaurants based on active category and search query
-  const filteredRestaurants = restaurants.filter((restaurant) => {
-    // 1. Category Filter
-    if (activeCategory !== "all") {
-      const categoryId = activeCategory.toLowerCase();
-      const restaurantCategory = restaurant.category.toLowerCase();
-      
-      const categoryMap: { [key: string]: string } = {
-        pho: "phở",
-        bun: "bún",
-        com: "cơm",
-        banh: "bánh",
-        cafe: "cà phê",
-        tra: "trà sữa",
-        lau: "lẩu"
-      };
-      
-      const targetCategory = categoryMap[categoryId];
-      if (targetCategory && !restaurantCategory.includes(targetCategory)) {
-        return false;
-      }
-    }
-
-    // 2. Search Query Filter
-    if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      return (
-        restaurant.name.toLowerCase().includes(query) ||
-        restaurant.address.toLowerCase().includes(query) ||
-        restaurant.category.toLowerCase().includes(query)
-      );
-    }
-
-    return true;
-  });
+  const filteredRestaurants = restaurantsList;
 
   return (
     <div className="h-screen w-screen bg-background overflow-hidden relative flex flex-col">

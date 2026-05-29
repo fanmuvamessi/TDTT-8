@@ -184,25 +184,26 @@ def seed_database():
         sample_merchants = db.query(Merchant).limit(10).all()
         
         video_details = [
-            ("Review Phở bò cực đỉnh Quận 1", "https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41582-large.mp4", "Nước dùng ngọt thanh cực kỳ ngon, sườn bò mềm tan."),
-            ("Bánh mì giòn rụm chỉ 25k đông khách nhất Q3", "https://assets.mixkit.co/videos/preview/mixkit-cutting-slices-of-fresh-bread-41595-large.mp4", "Chỗ này nổi tiếng giòn thơm ngon, ăn một ổ là no nê cả buổi sáng."),
-            ("Cơm Tấm sườn nướng siêu to khổng lồ", "https://assets.mixkit.co/videos/preview/mixkit-pouring-sauce-on-a-meal-41584-large.mp4", "Sườn nướng thơm phức mật ong ăn kèm chả trứng dai giòn sần sật."),
-            ("Hủ tiếu khô độc lạ Nam Bộ cực kỳ đắt khách", "https://assets.mixkit.co/videos/preview/mixkit-frying-diced-chicken-in-a-pan-41592-large.mp4", "Nước sốt khô sền sệt đậm đà, tôm tươi giòn ngọt lịm."),
-            ("Bún chả Hà Nội chuẩn vị giữa lòng Sài Gòn", "https://assets.mixkit.co/videos/preview/mixkit-grilling-chicken-skewers-on-a-barbecue-41597-large.mp4", "Chả viên nướng cháy cạnh thơm lừng mùi than củi cực chất lượng."),
-            ("Quán chè ngon giá học sinh sinh viên tại Q5", "https://assets.mixkit.co/videos/preview/mixkit-scooping-ice-cream-with-a-spoon-41604-large.mp4", "Nước cốt dừa thơm béo ngậy sánh mịn không quá ngọt."),
-            ("Bún bò Huế đầy ắp topping siêu ngon", "https://assets.mixkit.co/videos/preview/mixkit-chef-slicing-cooked-beef-on-board-41590-large.mp4", "Bún bò nhiều thịt sườn giò heo siêu béo, sa tế tự làm cay xé lưỡi."),
-            ("Địa điểm hẹn hò lãng mạn lẩu bò cực chất", "https://assets.mixkit.co/videos/preview/mixkit-close-up-of-boiling-soup-in-pot-41600-large.mp4", "Không gian sang xịn mịn đồ ăn tươi roi rói nên thử nha các bạn."),
-            ("Đột nhập bếp phở gia truyền nổi tiếng 30 năm", "https://assets.mixkit.co/videos/preview/mixkit-cooking-fresh-pasta-in-boiling-water-41588-large.mp4", "Mắt thấy tai nghe quy trình ninh xương bò gia truyền cực kỳ sạch sẽ ngon miệng."),
-            ("Gợi ý ăn trưa nhanh gọn lẹ cho dân văn phòng", "https://assets.mixkit.co/videos/preview/mixkit-wrapping-a-burrito-with-fresh-ingredients-41591-large.mp4", "Nhanh gọn tiện lợi đầy đủ dinh dưỡng chi phí lại vô cùng hợp lý.")
+            ("Review Phở bò cực đỉnh Quận 1", "https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41582-large.mp4", "Nước dùng ngọt thanh cực kỳ ngon, sườn bò mềm tan.", "video"),
+            ("Bánh mì giòn rụm chỉ 25k đông khách nhất Q3", "https://images.unsplash.com/photo-1509722747041-616f39b57569?w=800", "Chỗ này nổi tiếng giòn thơm ngon, ăn một ổ là no nê cả buổi sáng.", "image"),
+            ("Cơm Tấm sườn nướng siêu to khổng lồ", "https://assets.mixkit.co/videos/preview/mixkit-pouring-sauce-on-a-meal-41584-large.mp4", "Sườn nướng thơm phức mật ong ăn kèm chả trứng dai giòn sần sật.", "video"),
+            ("Hủ tiếu khô độc lạ Nam Bộ cực kỳ đắt khách", "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800", "Nước sốt khô sền sệt đậm đà, tôm tươi giòn ngọt lịm.", "image"),
+            ("Bún chả Hà Nội chuẩn vị giữa lòng Sài Gòn", "https://assets.mixkit.co/videos/preview/mixkit-grilling-chicken-skewers-on-a-barbecue-41597-large.mp4", "Chả viên nướng cháy cạnh thơm lừng mùi than củi cực chất lượng.", "video"),
+            ("Quán chè ngon giá học sinh sinh viên tại Q5", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800", "Nước cốt dừa thơm béo ngậy sánh mịn không quá ngọt.", "image"),
+            ("Bún bò Huế đầy ắp topping siêu ngon", "https://assets.mixkit.co/videos/preview/mixkit-chef-slicing-cooked-beef-on-board-41590-large.mp4", "Bún bò nhiều thịt sườn giò heo siêu béo, sa tế tự làm cay xé lưỡi.", "video"),
+            ("Địa điểm hẹn hò lãng mạn lẩu bò cực chất", "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800", "Không gian sang xịn mịn đồ ăn tươi roi rói nên thử nha các bạn.", "image"),
+            ("Đột nhập bếp phở gia truyền nổi tiếng 30 năm", "https://assets.mixkit.co/videos/preview/mixkit-cooking-fresh-pasta-in-boiling-water-41588-large.mp4", "Mắt thấy tai nghe quy trình ninh xương bò gia truyền cực kỳ sạch sẽ ngon miệng.", "video"),
+            ("Gợi ý ăn trưa nhanh gọn lẹ cho dân văn phòng", "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800", "Nhanh gọn tiện lợi đầy đủ dinh dưỡng chi phí lại vô cùng hợp lý.", "image")
         ]
 
         videos = []
-        for idx, (title, url, desc) in enumerate(video_details):
+        for idx, (title, url, desc, p_type) in enumerate(video_details):
             video = Video(
                 title=title,
                 video_url=url,
-                thumbnail_url=f"https://images.unsplash.com/photo-{random.randint(1500000000000, 1600000000000)}?w=400",
+                thumbnail_url=url if p_type == "image" else f"https://images.unsplash.com/photo-{random.randint(1500000000000, 1600000000000)}?w=400",
                 description=desc,
+                post_type=p_type,
                 likes_count=0,
                 reviewer_id=random.choice([users[1].id, users[2].id]),
                 tagged_merchant_id=sample_merchants[idx].id if idx < len(sample_merchants) else None
@@ -213,7 +214,7 @@ def seed_database():
         db.commit()
         for v in videos:
             db.refresh(v)
-        print(f"Created {len(videos)} video reviews.")
+        print(f"Created {len(videos)} reviews ({sum(1 for x in video_details if x[3]=='image')} images, {sum(1 for x in video_details if x[3]=='video')} videos).")
 
         print("\n--- Creating sample interactions (likes & comments) ---")
         # Reviewers và Admin thả tim các video

@@ -18,6 +18,7 @@ class VideoCreate(BaseModel):
     thumbnail_url: Optional[str] = None
     description: Optional[str] = None
     tagged_merchant_id: Optional[int] = None
+    post_type: Optional[str] = "video"
 
 class VideoUserResponse(BaseModel):
     id: int
@@ -44,8 +45,10 @@ class VideoResponse(BaseModel):
     video_url: str
     thumbnail_url: Optional[str] = None
     description: Optional[str] = None
+    post_type: str = "video"
     status: str
     likes_count: int
+    comments_count: int = 0
     reviewer_id: int
     tagged_merchant_id: Optional[int] = None
     created_at: datetime
@@ -72,8 +75,10 @@ class VideoResponse(BaseModel):
             "video_url": data.video_url,
             "thumbnail_url": data.thumbnail_url,
             "description": data.description,
+            "post_type": getattr(data, "post_type", "video"),
             "status": data.status,
             "likes_count": data.likes_count,
+            "comments_count": len(getattr(data, "comments", [])) if hasattr(data, "comments") and getattr(data, "comments", []) else 0,
             "reviewer_id": data.reviewer_id,
             "tagged_merchant_id": data.tagged_merchant_id,
             "created_at": data.created_at,

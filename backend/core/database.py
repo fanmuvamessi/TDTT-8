@@ -10,7 +10,10 @@ DATABASE_URL = settings.DATABASE_URL
 # SQLite needs some special configurations
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    connect_args = {
+        "check_same_thread": False,
+        "timeout": 30  # Tăng thời gian chờ khoá để tránh lỗi 'database is locked' khi có nhiều luồng
+    }
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

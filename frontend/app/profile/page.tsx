@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Grid3X3, Bookmark, Heart, MapPin, Home, Share2, LogOut, Loader2 } from "lucide-react";
+import { Settings, Grid3X3, Bookmark, Heart, MapPin, Home, Share2, LogOut, Loader2, Play } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 export default function ProfilePage() {
   const router = useRouter();
   const { user, token, loading, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<"posts" | "saved" | "liked">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "reels" | "saved" | "liked">("posts");
   const [profileStats, setProfileStats] = useState<any>(null);
   const [isFetching, setIsFetching] = useState(true);
 
@@ -185,6 +185,18 @@ export default function ProfilePage() {
               <span className="text-sm font-medium">Bài viết</span>
             </button>
             <button
+              onClick={() => setActiveTab("reels")}
+              className={cn(
+                "flex-1 py-3 flex items-center justify-center gap-2 border-b-2 transition-colors",
+                activeTab === "reels"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground"
+              )}
+            >
+              <Play className="w-5 h-5" />
+              <span className="text-sm font-medium">Reels</span>
+            </button>
+            <button
               onClick={() => setActiveTab("saved")}
               className={cn(
                 "flex-1 py-3 flex items-center justify-center gap-2 border-b-2 transition-colors",
@@ -212,38 +224,54 @@ export default function ProfilePage() {
         </div>
 
         {/* Premium Grid with Spacing & Rounded corners */}
-        <div className="grid grid-cols-3 gap-3 px-4 py-4">
-          {profileStats?.videos?.map((video: any, index: number) => (
-            <button
-              key={video.id}
-              className="relative aspect-square group rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02]"
-            >
-              <Image
-                src={video.thumbnail_url || "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400&h=300&fit=crop"}
-                alt={video.title}
-                fill
-                className="object-cover"
-                sizes="(max-width: 512px) 33vw, 170px"
-                priority={index < 3}
-                loading={index < 3 ? "eager" : "lazy"}
-              />
-              <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <div className="flex items-center gap-4 text-card">
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-5 h-5 fill-card" />
-                    <span className="font-semibold">{video.likes_count}</span>
+        {(() => {
+          const displayedVideos = profileStats?.videos?.filter((video: any) => {
+            if (activeTab === "posts") return video.post_type === "image";
+            if (activeTab === "reels") return video.post_type === "video";
+            return true; // saved or liked tabs
+          }) || [];
+
+          return (
+            <div className="grid grid-cols-3 gap-3 px-4 py-4">
+              {displayedVideos.map((video: any, index: number) => (
+                <button
+                  key={video.id}
+                  className="relative aspect-square group rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02]"
+                >
+                  <Image
+                    src={video.thumbnail_url || "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400&h=300&fit=crop"}
+                    alt={video.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 512px) 33vw, 170px"
+                    priority={index < 3}
+                    loading={index < 3 ? "eager" : "lazy"}
+                  />
+                  <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="flex items-center gap-4 text-card">
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-5 h-5 fill-card" />
+                        <span className="font-semibold">{video.likes_count}</span>
+                      </div>
+                    </div>
                   </div>
+                </button>
+              ))}
+              {displayedVideos.length === 0 && (
+                <div className="col-span-3 text-center py-16 px-4 bg-secondary/20 rounded-3xl border border-dashed border-border/80 my-4 space-y-2">
+                  <p className="font-bold text-sm text-foreground">
+                    {activeTab === "posts" ? "Không có bài viết hình ảnh nào" : "Không có Reels video nào"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {activeTab === "posts" 
+                      ? "Bạn chưa đăng bài đánh giá hình ảnh nào. Hãy chia sẻ món ngon đầu tiên nhé!" 
+                      : "Bạn chưa đăng video Reels ngắn nào. Hãy chia sẻ video review đầu tiên nhé!"}
+                  </p>
                 </div>
-              </div>
-            </button>
-          ))}
-          {(!profileStats?.videos || profileStats.videos.length === 0) && (
-            <div className="col-span-3 text-center py-16 px-4 bg-secondary/20 rounded-3xl border border-dashed border-border/80 my-4 space-y-2">
-              <p className="font-bold text-sm text-foreground">Không có bài viết nào</p>
-              <p className="text-xs text-muted-foreground">Bạn chưa đăng video review nào cả. Hãy chia sẻ món ngon đầu tiên nhé!</p>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
       </main>
     </div>
   );

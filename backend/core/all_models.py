@@ -83,6 +83,9 @@ class Video(Base):
     # 5. CẢI TIẾN QUAN TRỌNG: Thêm trạng thái kiểm duyệt video để tránh Reviewer đăng nội dung rác bừa bãi
     status = Column(String, default="pending", nullable=False) # pending, approved, rejected
     
+    # 6. PHÂN LOẠI UX: video (Reels) hoặc image (Post)
+    post_type = Column(String, default="video", nullable=False)
+    
     likes_count = Column(Integer, default=0, nullable=False)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     tagged_merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)

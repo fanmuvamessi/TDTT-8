@@ -41,6 +41,7 @@ class VideoMinResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     description: Optional[str] = None
     likes_count: int = 0
+    post_type: str = "video"
     created_at: datetime
 
     class Config:

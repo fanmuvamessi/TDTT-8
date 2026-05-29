@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { reels } from "@/lib/data";
 import { ReelCard } from "@/components/reel-card";
-import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark } from "lucide-react";
+import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Comment {
   id: string;
@@ -23,166 +24,76 @@ interface Comment {
   replies?: Comment[];
 }
 
-const defaultReelComments: { [reelId: string]: Comment[] } = {
-  "r1": [
-    {
-      id: "rc1_1",
-      user: {
-        name: "Hoàng Nam",
-        username: "nam_explore",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-      },
-      content: "Nước dùng bún bò Huế ở đây ngọt thanh thanh, sa tế cay nồng đúng điệu Huế luôn! Nhất định phải thử mọi người ơi 🍜🔥",
-      createdAt: "2 giờ trước",
-      likes: 142,
-      replies: [
-        {
-          id: "rc1_1_r1",
-          user: {
-            name: "FoodieVN",
-            username: "foodie_vietnam",
-            avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
-          },
-          content: "Cảm ơn bạn nhiều nha! Quán này gia truyền 3 đời rồi đó bạn ơi 🥰",
-          createdAt: "1 giờ trước",
-          likes: 35,
-        }
-      ]
-    },
-    {
-      id: "rc1_2",
-      user: {
-        name: "Linh Chi",
-        username: "chi_tastehunter",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop",
-      },
-      content: "Nhìn khoanh giò heo chất lượng quá, thêm miếng chả cua siêu to khổng lồ nữa chứ! Thèm xỉu 🤤🤤",
-      createdAt: "3 giờ trước",
-      likes: 88,
-    },
-    {
-      id: "rc1_3",
-      user: {
-        name: "Thu Hương",
-        username: "huong.foodlover",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-      },
-      content: "Địa chỉ quán ở đâu thế ạ? Có dễ tìm không bạn?",
-      createdAt: "4 giờ trước",
-      likes: 12,
-    }
-  ],
-  "r2": [
-    {
-      id: "rc2_1",
-      user: {
-        name: "Minh Anh",
-        username: "minhanh_foodie",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-      },
-      content: "Gỏi cuốn Bà Tám thì huyền thoại rồi! Nước chấm tương đen bơ đậu phộng siêu béo ngậy 🥜, cuốn tôm thịt ngập răng luôn á!",
-      createdAt: "1 giờ trước",
-      likes: 95,
-      replies: [
-        {
-          id: "rc2_1_r1",
-          user: {
-            name: "Ẩm Thực Đường Phố",
-            username: "streetfood_vn",
-            avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop",
-          },
-          content: "Ăn một lần là ghiền luôn đúng không bạn ơi 🥗🤤",
-          createdAt: "45 phút trước",
-          likes: 18,
-        }
-      ]
-    },
-    {
-      id: "rc2_2",
-      user: {
-        name: "Đức Minh",
-        username: "ducminh_food",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-      },
-      content: "Fresh thực sự, hè nóng nực ăn mấy món cuốn này là chuẩn bài nhất rồi!",
-      createdAt: "2 giờ trước",
-      likes: 47,
-    }
-  ],
-  "r3": [
-    {
-      id: "rc3_1",
-      user: {
-        name: "Linh Chi",
-        username: "chi_tastehunter",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop",
-      },
-      content: "Sốt trộn hủ tiếu ở đây làm theo công thức riêng ăn đậm đà cuốn lắm mọi người, nhớ xin thêm chén nước súp xương nữa nhé! 🍜",
-      createdAt: "5 giờ trước",
-      likes: 120,
-    },
-    {
-      id: "rc3_2",
-      user: {
-        name: "Hoàng Nam",
-        username: "nam_explore",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-      },
-      content: "Nhìn sợi hủ tiếu dai dai bóng bẩy chảy nước miếng luôn trời ơi. Phải ghé quán ngay chiều nay mới được!",
-      createdAt: "6 giờ trước",
-      likes: 64,
-    }
-  ],
-  "r4": [
-    {
-      id: "rc4_1",
-      user: {
-        name: "Thu Hương",
-        username: "huong.foodlover",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-      },
-      content: "Chả cá Lã Vọng thơm phức mùi nghệ và mắm tôm ngon đỉnh chóp! Ăn kèm bún với hành hoa, thì là xào chín ăn tới đâu ấm lòng tới đó 🐟🌿",
-      createdAt: "30 phút trước",
-      likes: 156,
-      replies: [
-        {
-          id: "rc4_1_r1",
-          user: {
-            name: "Hà Nội Phố",
-            username: "hanoi_pho",
-            avatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop",
-          },
-          content: "Ăn chả cá chuẩn Hà Nội xưa thì đúng là tinh hoa ẩm thực luôn bạn ạ! 🥰",
-          createdAt: "15 phút trước",
-          likes: 42,
-        }
-      ]
-    },
-    {
-      id: "rc4_2",
-      user: {
-        name: "Minh Anh",
-        username: "minhanh_foodie",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-      },
-      content: "Giá rổ ở đây thế nào vậy ad? Đi nhóm 4 người hết khoảng bao nhiêu ạ?",
-      createdAt: "1 giờ trước",
-      likes: 29,
-    }
-  ]
-};
+// Comments are loaded dynamically from the backend interact API!
 
 const quickEmojis = ["🤤", "😍", "🔥", "👏", "💯"];
 
 export default function ReelsPage() {
+  const { user, token } = useAuth();
+  const displayName = user?.full_name || "Khách";
+  const displayUsername = user?.email ? user.email.split('@')[0] : "guest";
+  const displayAvatar = user?.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop";
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [commentsState, setCommentsState] = useState<{ [reelId: string]: Comment[] }>(defaultReelComments);
+  const [reelsList, setReelsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeComments, setActiveComments] = useState<Comment[]>([]);
+  const [isFetchingComments, setIsFetchingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("reels-muted");
+      return stored === null ? true : stored === "true";
+    }
+    return true;
+  });
+
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    localStorage.setItem("reels-muted", String(newMuted));
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchReels = async () => {
+      try {
+        const response = await fetch("/api/content/videos?post_type=video");
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.items.map((item: any) => ({
+            id: String(item.id),
+            user: {
+              name: item.user?.full_name || "Người dùng",
+              username: item.user?.username || `user_${item.reviewer_id}`,
+              avatar: item.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+            },
+            restaurant: {
+              name: item.restaurant?.name || "Quán ăn ẩm thực",
+              address: item.restaurant?.address || ""
+            },
+            video: item.video_url || "",
+            thumbnail: item.thumbnail_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",
+            caption: item.description || item.title,
+            likes: item.likes_count,
+            comments: item.comments_count || 0,
+            shares: 0,
+            music: "Âm thanh gốc - " + (item.user?.full_name || "Blogger")
+          }));
+          setReelsList(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải reels từ API:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReels();
+  }, []);
 
   // Auto detect mobile/desktop client-side
   useEffect(() => {
@@ -207,7 +118,7 @@ export default function ReelsPage() {
       const scrollTop = container.scrollTop;
       const itemHeight = container.clientHeight;
       const newIndex = Math.round(scrollTop / itemHeight);
-      if (newIndex !== activeIndex && newIndex >= 0 && newIndex < reels.length) {
+      if (newIndex !== activeIndex && newIndex >= 0 && newIndex < reelsList.length) {
         setActiveIndex(newIndex);
         // Clear reply target on slide change
         setReplyingTo(null);
@@ -216,66 +127,113 @@ export default function ReelsPage() {
 
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [activeIndex]);
+  }, [activeIndex, reelsList]);
 
-  const activeReel = reels[activeIndex];
-  const activeComments = commentsState[activeReel?.id] || [];
+  const activeReel = reelsList[activeIndex];
 
-  const handleSendComment = (textToSend = newCommentText, e?: React.FormEvent) => {
+  // Fetch comments dynamically when activeReel changes
+  useEffect(() => {
+    if (!activeReel?.id) {
+      setActiveComments([]);
+      return;
+    }
+    const fetchComments = async () => {
+      setIsFetchingComments(true);
+      try {
+        const response = await fetch(`/api/interact/videos/${activeReel.id}/comments`);
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((c: any) => ({
+            id: String(c.id),
+            user: {
+              name: c.user?.full_name || "Người dùng",
+              username: c.user?.username || `user_${c.user_id}`,
+              avatar: c.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+            },
+            content: c.content,
+            createdAt: "Vừa xong",
+            likes: c.likes_count,
+            replies: c.replies ? c.replies.map((r: any) => ({
+              id: String(r.id),
+              user: {
+                name: r.user?.full_name || "Người dùng",
+                username: r.user?.username || `user_${r.user_id}`,
+                avatar: r.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+              },
+              content: r.content,
+              createdAt: "Vừa xong",
+              likes: r.likes_count
+            })) : []
+          }));
+          setActiveComments(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải bình luận reels:", err);
+      } finally {
+        setIsFetchingComments(false);
+      }
+    };
+    fetchComments();
+  }, [activeReel?.id]);
+
+  const handleSendComment = async (textToSend = newCommentText, e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = typeof textToSend === "string" ? textToSend.trim() : newCommentText.trim();
     if (!text || !activeReel) return;
 
-    const newCommentObj: Comment = {
-      id: `rc_${Date.now()}`,
-      user: {
-        name: "Nguyễn Văn A",
-        username: "nguyen_foodie",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop",
-      },
-      content: text,
-      createdAt: "Vừa xong",
-      likes: 0,
-      replies: []
-    };
-
-    if (replyingTo) {
-      setCommentsState(prev => {
-        const listForReel = prev[activeReel.id] || [];
-        const updatedList = listForReel.map(c => {
-          if (c.id === replyingTo.id) {
-            return {
-              ...c,
-              replies: [...(c.replies || []), newCommentObj]
-            };
-          }
-          if (c.replies && c.replies.some(r => r.id === replyingTo.id)) {
-            return {
-              ...c,
-              replies: c.replies.map(r => {
-                if (r.id === replyingTo.id) {
-                  return {
-                    ...r,
-                    replies: [...(r.replies || []), newCommentObj]
-                  };
-                }
-                return r;
-              })
-            };
-          }
-          return c;
-        });
-        return {
-          ...prev,
-          [activeReel.id]: updatedList
-        };
+    try {
+      const response = await fetch(`/api/interact/videos/${activeReel.id}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: text,
+          parent_id: replyingTo ? Number(replyingTo.id) : null
+        })
       });
-      setReplyingTo(null);
-    } else {
-      setCommentsState(prev => ({
-        ...prev,
-        [activeReel.id]: [...(prev[activeReel.id] || []), newCommentObj]
-      }));
+
+      if (response.ok) {
+        const c = await response.json();
+        const newCommentObj: Comment = {
+          id: String(c.id),
+          user: {
+            name: user?.full_name || displayName,
+            username: user?.email ? user.email.split("@")[0] : displayUsername,
+            avatar: user?.avatar_url || displayAvatar,
+          },
+          content: c.content,
+          createdAt: "Vừa xong",
+          likes: 0,
+          replies: []
+        };
+
+        if (replyingTo) {
+          setActiveComments(prev => prev.map(item => {
+            if (item.id === replyingTo.id) {
+              return {
+                ...item,
+                replies: [...(item.replies || []), newCommentObj]
+              };
+            }
+            return item;
+          }));
+          setReplyingTo(null);
+        } else {
+          setActiveComments(prev => [...prev, newCommentObj]);
+        }
+
+        // Update comments count visually in the reels list
+        setReelsList(prev => prev.map(r => {
+          if (r.id === activeReel.id) {
+            return { ...r, comments: r.comments + 1 };
+          }
+          return r;
+        }));
+      }
+    } catch (err) {
+      console.error("Lỗi khi gửi bình luận reels:", err);
     }
 
     setNewCommentText("");
@@ -305,22 +263,34 @@ export default function ReelsPage() {
           <div className="flex items-center gap-3.5 mt-1 px-1.5 text-[9px] text-muted-foreground/80 font-bold select-none">
             <span className="font-medium text-muted-foreground/45">{comment.createdAt}</span>
             <button 
-              onClick={() => {
-                setCommentsState(prev => {
-                  const list = prev[activeReel?.id] || [];
-                  const updateLike = (cList: Comment[]): Comment[] => {
-                    return cList.map(c => {
-                      if (c.id === comment.id) {
-                        return { ...c, likes: c.likes + 1 };
-                      }
-                      if (c.replies && c.replies.length > 0) {
-                        return { ...c, replies: updateLike(c.replies) };
-                      }
-                      return c;
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/interact/comments/${comment.id}/like`, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${token}`
+                    }
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setActiveComments(prev => {
+                      const updateLike = (cList: Comment[]): Comment[] => {
+                        return cList.map(c => {
+                          if (c.id === comment.id) {
+                            return { ...c, likes: data.likes_count };
+                          }
+                          if (c.replies && c.replies.length > 0) {
+                            return { ...c, replies: updateLike(c.replies) };
+                          }
+                          return c;
+                        });
+                      };
+                      return updateLike(prev);
                     });
-                  };
-                  return { ...prev, [activeReel.id]: updateLike(list) };
-                });
+                  }
+                } catch (err) {
+                  console.error("Lỗi khi thích bình luận:", err);
+                }
               }}
               className="hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
             >
@@ -346,7 +316,16 @@ export default function ReelsPage() {
     );
   };
 
-  if (reels.length === 0) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground font-medium animate-pulse">Đang tải Reels...</p>
+      </div>
+    );
+  }
+
+  if (reelsList.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
         {/* Decorative background gradients */}
@@ -367,10 +346,12 @@ export default function ReelsPage() {
           </div>
 
           <div className="flex flex-col gap-3 pt-4 justify-center">
-            <Button className="h-12 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md">
-              <Camera className="w-4 h-4 mr-2" />
-              Tải lên Video đầu tiên
-            </Button>
+            <Link href="/create">
+              <Button className="w-full h-12 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md">
+                <Camera className="w-4 h-4 mr-2" />
+                Tải lên Video đầu tiên
+              </Button>
+            </Link>
             <Link href="/" className="w-full">
               <Button variant="outline" className="w-full h-12 rounded-xl text-sm font-bold border-border bg-card">
                 Quay lại Trang chủ
@@ -396,12 +377,14 @@ export default function ReelsPage() {
               <Home className="w-5 h-5" />
             </button>
           </Link>
-          <button
-            className="w-10 h-10 rounded-full bg-black/40 dark:bg-black/60 backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center hover:bg-orange-500 hover:border-orange-500 active:scale-95 transition-all duration-300 text-white cursor-pointer pointer-events-auto"
-            aria-label="Đăng tin mới"
-          >
-            <Camera className="w-5 h-5" />
-          </button>
+          <Link href="/create" className="pointer-events-auto">
+            <button
+              className="w-10 h-10 rounded-full bg-black/40 dark:bg-black/60 backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center hover:bg-orange-500 hover:border-orange-500 active:scale-95 transition-all duration-300 text-white cursor-pointer"
+              aria-label="Đăng tin mới"
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+          </Link>
         </div>
 
         {/* Reels Container */}
@@ -409,13 +392,15 @@ export default function ReelsPage() {
           ref={containerRef}
           className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
         >
-          {reels.map((reel, index) => (
-            <div key={reel.id} className="h-full w-full snap-start">
+          {reelsList.map((reel, index) => (
+            <div key={`reel-${reel.id}-${index}`} className="h-full w-full snap-start">
               <ReelCard 
                 reel={reel} 
                 isActive={index === activeIndex} 
                 onCommentClick={() => setShowComments(!showComments)}
                 isCommentsOpen={showComments}
+                isMuted={isMuted}
+                onMuteToggle={toggleMute}
               />
             </div>
           ))}
@@ -511,8 +496,8 @@ export default function ReelsPage() {
 
             <form onSubmit={(e) => handleSendComment(newCommentText, e)} className="flex items-center gap-2">
               <Avatar className="w-8 h-8 flex-shrink-0 ring-1 ring-primary/25">
-                <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop" alt="User Profile" />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarImage src={displayAvatar} alt={displayName} />
+                <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">{displayName[0]}</AvatarFallback>
               </Avatar>
               <div className="relative flex-1">
                 <input
@@ -593,8 +578,8 @@ export default function ReelsPage() {
 
               <form onSubmit={(e) => handleSendComment(newCommentText, e)} className="flex items-center gap-2 pb-6">
                 <Avatar className="w-8 h-8 flex-shrink-0 ring-1 ring-primary/25">
-                  <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop" alt="User Profile" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={displayAvatar} alt={displayName} />
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">{displayName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="relative flex-1">
                   <input

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/header";
 import { CategoryFilter } from "@/components/category-filter";
 import { FoodPost } from "@/components/food-post";
-import { BottomNavigation } from "@/components/bottom-navigation";
-import { foodPosts, restaurants, userProfile } from "@/lib/data";
+import { userProfile } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,125 +48,128 @@ interface Comment {
   replies?: Comment[];
 }
 
-const defaultComments: { [postId: string]: Comment[] } = {
-  "1": [
-    {
-      id: "c1_1",
-      user: {
-        name: "Thu Hương",
-        username: "huong.foodlover",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-      },
-      content: "Nhìn thèm xỉu luôn á! Nước dùng ở đây siêu thơm ngon và trong vắt, chuẩn vị phở Hà Nội xưa 🍜",
-      createdAt: "1 giờ trước",
-      likes: 45,
-      replies: [
-        {
-          id: "c1_1_r1",
-          user: {
-            name: "Minh Anh",
-            username: "minhanh_foodie",
-            avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-          },
-          content: "Chuẩn luôn bạn ơi, mình ăn từ bé tới giờ vẫn thấy ngon lành!",
-          createdAt: "45 phút trước",
-          likes: 12,
-          replies: []
-        },
-        {
-          id: "c1_1_r2",
-          user: {
-            name: "Hoàng Nam",
-            username: "nam_explore",
-            avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-          },
-          content: "Đúng rồi, thịt bò tái gầu giòn sần sật ăn cuốn cực kỳ!",
-          createdAt: "30 phút trước",
-          likes: 8,
-          replies: []
-        }
-      ]
-    },
-    {
-      id: "c1_2",
-      user: {
-        name: "Đức Minh",
-        username: "ducminh_food",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-      },
-      content: "Quán này bán từ mấy giờ thế bạn ơi? Cuối tuần này mình ra Hà Nội định đi ăn thử.",
-      createdAt: "30 phút trước",
-      likes: 15,
-      replies: [
-        {
-          id: "c1_2_r1",
-          user: {
-            name: "Minh Anh",
-            username: "minhanh_foodie",
-            avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-          },
-          content: "Quán mở cửa từ 6h sáng tới 10h tối nha bạn! Nên đi sớm ăn cho thảnh thơi nha.",
-          createdAt: "15 phút trước",
-          likes: 5,
-          replies: []
-        }
-      ]
-    }
-  ],
-  "2": [
-    {
-      id: "c2_1",
-      user: {
-        name: "Linh Chi",
-        username: "chi_tastehunter",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop",
-      },
-      content: "Bún chả ở đây ngon xuất sắc, thịt nướng than hoa thơm phức luôn á!",
-      createdAt: "2 giờ trước",
-      likes: 34,
-      replies: [
-        {
-          id: "c2_1_r1",
-          user: {
-            name: "Thu Hương",
-            username: "huong.foodlover",
-            avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-          },
-          content: "Nhất là phần nước chấm ấm nóng, ăn kèm rau sống đỉnh chóp thực sự!",
-          createdAt: "1 giờ trước",
-          likes: 9,
-          replies: []
-        }
-      ]
-    }
-  ],
-  "3": [
-    {
-      id: "c3_1",
-      user: {
-        name: "Đức Minh",
-        username: "ducminh_food",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-      },
-      content: "Bánh mì Hội An thì không đâu so sánh được với tiệm Phượng này luôn, đỉnh thật sự!",
-      createdAt: "3 giờ trước",
-      likes: 56,
-      replies: []
-    }
-  ]
-};
+// Comments are fetched dynamically from the backend interact API!
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const displayName = user?.full_name || "Khách";
   const displayUsername = user?.email ? user.email.split('@')[0] : "guest";
   const displayAvatar = user?.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop";
 
-  const [postsList, setPostsList] = useState(foodPosts);
+  const [postsList, setPostsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch("/api/content/videos?post_type=image");
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.items.map((item: any) => ({
+            id: String(item.id),
+            user: {
+              name: item.user?.full_name || "Người dùng",
+              username: item.user?.username || `user_${item.reviewer_id}`,
+              avatar: item.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+            },
+            restaurant: {
+              name: item.restaurant?.name || "Quán ăn ẩm thực",
+              address: item.restaurant?.address || "",
+              rating: item.restaurant?.rating_avg || 4.8,
+              category: item.restaurant?.category || "Món ăn"
+            },
+            image: item.video_url,
+            caption: item.description || item.title,
+            likes: item.likes_count,
+            comments: item.comments_count || 0,
+            saves: Math.floor(Math.random() * 12) + 3,
+            createdAt: "Vừa xong",
+            isLiked: false,
+            isSaved: false
+          }));
+          setPostsList(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải bài viết từ API:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch("/api/interact/search?lat=10.775&lng=106.690&radius=15.0&limit=5");
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((item: any) => ({
+            id: String(item.id),
+            name: item.name,
+            address: item.address,
+            category: item.category,
+            rating: item.rating_avg,
+            image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150"
+          }));
+          setSuggestedRestaurants(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải gợi ý quán ăn:", err);
+      }
+    };
+
+    fetchPosts();
+    fetchSuggestions();
+  }, []);
+
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [commentsState, setCommentsState] = useState<{ [postId: string]: Comment[] }>(defaultComments);
+  const [activeComments, setActiveComments] = useState<Comment[]>([]);
+  const [isFetchingComments, setIsFetchingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+
+  useEffect(() => {
+    if (!selectedPostId) {
+      setActiveComments([]);
+      return;
+    }
+    const fetchComments = async () => {
+      setIsFetchingComments(true);
+      try {
+        const response = await fetch(`/api/interact/videos/${selectedPostId}/comments`);
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((c: any) => ({
+            id: String(c.id),
+            user: {
+              name: c.user?.full_name || "Người dùng",
+              username: c.user?.username || `user_${c.user_id}`,
+              avatar: c.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+            },
+            content: c.content,
+            createdAt: "Hôm nay",
+            likes: c.likes_count,
+            replies: c.replies ? c.replies.map((r: any) => ({
+              id: String(r.id),
+              user: {
+                name: r.user?.full_name || "Người dùng",
+                username: r.user?.username || `user_${r.user_id}`,
+                avatar: r.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+              },
+              content: r.content,
+              createdAt: "Hôm nay",
+              likes: r.likes_count
+            })) : []
+          }));
+          setActiveComments(mapped);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải bình luận:", err);
+      } finally {
+        setIsFetchingComments(false);
+      }
+    };
+    fetchComments();
+  }, [selectedPostId]);
 
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -253,6 +255,10 @@ export default function HomePage() {
                 <Play className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 <span>Reels quán ngon</span>
               </Link>
+              <Link href="/create" className="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold text-foreground hover:bg-secondary/80 hover:text-primary transition-all duration-200 group">
+                <Camera className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span>Đăng bài review</span>
+              </Link>
               <Link href="/map" className="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold text-foreground hover:bg-secondary/80 hover:text-primary transition-all duration-200 group">
                 <MapPin className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 <span>Bản đồ ẩm thực</span>
@@ -320,7 +326,7 @@ export default function HomePage() {
             {filteredPosts.length > 0 ? (
               filteredPosts.map((post, index) => (
                 <FoodPost 
-                  key={post.id} 
+                  key={`post-${post.id}-${index}`} 
                   post={post} 
                   priority={index === 0} 
                   onPostClick={() => setSelectedPostId(post.id)}
@@ -375,7 +381,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-3">
-              {restaurants.slice(0, 3).map((res) => (
+              {suggestedRestaurants.slice(0, 3).map((res) => (
                 <Link href="/map" key={res.id} className="flex gap-3 p-3 rounded-2xl bg-card border border-border/80 shadow-xs hover:border-primary/30 transition-all duration-200 group">
                   <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
                     <Avatar className="w-12 h-12 rounded-xl">
@@ -506,83 +512,64 @@ export default function HomePage() {
                 }));
               };
 
-              const activeComments = commentsState[activePost.id] || [];
-
-              // Handle posting new comment or reply
-              const handleSendComment = (e?: React.FormEvent) => {
+              // Handle posting new comment or reply via API
+              const handleSendComment = async (e?: React.FormEvent) => {
                 if (e) e.preventDefault();
                 if (!newCommentText.trim()) return;
 
-                const newCommentObj: Comment = {
-                  id: `c_${Date.now()}`,
-                  user: {
-                    name: displayName,
-                    username: displayUsername,
-                    avatar: displayAvatar,
-                  },
-                  content: newCommentText.trim(),
-                  createdAt: "Vừa xong",
-                  likes: 0,
-                  replies: []
-                };
-
-                if (replyingTo) {
-                  // It's a reply! Insert it into parent's replies list.
-                  setCommentsState(prev => {
-                    const listForPost = prev[activePost.id] || [];
-                    const updatedList = listForPost.map(c => {
-                      if (c.id === replyingTo.id) {
-                        return {
-                          ...c,
-                          replies: [...(c.replies || []), newCommentObj]
-                        };
-                      }
-                      // Recursive check if replies contain the replyingTo comment
-                      if (c.replies && c.replies.some(r => r.id === replyingTo.id)) {
-                        return {
-                          ...c,
-                          replies: c.replies.map(r => {
-                            if (r.id === replyingTo.id) {
-                              return {
-                                  ...r,
-                                  replies: [...(r.replies || []), newCommentObj]
-                              };
-                            }
-                            return r;
-                          })
-                        };
-                      }
-                      return c;
-                    });
-                    return {
-                      ...prev,
-                      [activePost.id]: updatedList
-                    };
+                try {
+                  const response = await fetch(`/api/interact/videos/${activePost.id}/comments`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      content: newCommentText.trim(),
+                      parent_id: replyingTo ? Number(replyingTo.id) : null
+                    })
                   });
 
-                  // Increment comments count on the post
-                  setPostsList(prev => prev.map(p => {
-                    if (p.id === activePost.id) {
-                      return { ...p, comments: p.comments + 1 };
-                    }
-                    return p;
-                  }));
+                  if (response.ok) {
+                    const c = await response.json();
+                    const newCommentObj: Comment = {
+                      id: String(c.id),
+                      user: {
+                        name: user?.full_name || displayName,
+                        username: user?.email ? user.email.split("@")[0] : displayUsername,
+                        avatar: user?.avatar_url || displayAvatar,
+                      },
+                      content: c.content,
+                      createdAt: "Vừa xong",
+                      likes: 0,
+                      replies: []
+                    };
 
-                  setReplyingTo(null);
-                } else {
-                  // Top-level comment
-                  setCommentsState(prev => ({
-                    ...prev,
-                    [activePost.id]: [...(prev[activePost.id] || []), newCommentObj]
-                  }));
-
-                  // Increment comments count on the post
-                  setPostsList(prev => prev.map(p => {
-                    if (p.id === activePost.id) {
-                      return { ...p, comments: p.comments + 1 };
+                    if (replyingTo) {
+                      setActiveComments(prev => prev.map(item => {
+                        if (item.id === replyingTo.id) {
+                          return {
+                            ...item,
+                            replies: [...(item.replies || []), newCommentObj]
+                          };
+                        }
+                        return item;
+                      }));
+                      setReplyingTo(null);
+                    } else {
+                      setActiveComments(prev => [...prev, newCommentObj]);
                     }
-                    return p;
-                  }));
+
+                    // Increment comments count visually
+                    setPostsList(prev => prev.map(p => {
+                      if (p.id === activePost.id) {
+                        return { ...p, comments: p.comments + 1 };
+                      }
+                      return p;
+                    }));
+                  }
+                } catch (err) {
+                  console.error("Lỗi khi gửi bình luận:", err);
                 }
 
                 setNewCommentText("");
@@ -613,23 +600,34 @@ export default function HomePage() {
                       <div className="flex items-center gap-3.5 mt-1 px-1.5 text-[9px] text-muted-foreground/80 font-bold select-none">
                         <span className="font-medium text-muted-foreground/45">{comment.createdAt}</span>
                         <button 
-                          onClick={() => {
-                            // Dynamic like for comment
-                            setCommentsState(prev => {
-                              const list = prev[activePost.id] || [];
-                              const updateLike = (cList: Comment[]): Comment[] => {
-                                return cList.map(c => {
-                                  if (c.id === comment.id) {
-                                    return { ...c, likes: c.likes + 1 };
-                                  }
-                                  if (c.replies && c.replies.length > 0) {
-                                    return { ...c, replies: updateLike(c.replies) };
-                                  }
-                                  return c;
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/interact/comments/${comment.id}/like`, {
+                                method: "POST",
+                                headers: {
+                                  "Authorization": `Bearer ${token}`
+                                }
+                              });
+                              if (response.ok) {
+                                const data = await response.json();
+                                setActiveComments(prev => {
+                                  const updateLike = (cList: Comment[]): Comment[] => {
+                                    return cList.map(c => {
+                                      if (c.id === comment.id) {
+                                        return { ...c, likes: data.likes_count };
+                                      }
+                                      if (c.replies && c.replies.length > 0) {
+                                        return { ...c, replies: updateLike(c.replies) };
+                                      }
+                                      return c;
+                                    });
+                                  };
+                                  return updateLike(prev);
                                 });
-                              };
-                              return { ...prev, [activePost.id]: updateLike(list) };
-                            });
+                              }
+                            } catch (err) {
+                              console.error("Lỗi khi thích bình luận:", err);
+                            }
                           }}
                           className="hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
                         >

@@ -61,16 +61,16 @@ def create_video_metadata(
 def list_videos(
     cursor: Optional[str] = Query(None, description="Cursor của trang trước (base64 string)"),
     limit: int = Query(8, ge=1, le=100, description="Số lượng bản ghi tối đa trả về"),
+    post_type: Optional[str] = Query(None, description="Lọc theo loại post (video hoặc image)"),
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
-    feed_data = services.get_video_feed(db=db, cursor=cursor, limit=limit)
+    feed_data = services.get_video_feed(db=db, cursor=cursor, limit=limit, post_type=post_type)
     
     # Kích hoạt tăng lượt impressions của campaign bất đồng bộ qua background task
     if feed_data.get("campaigns_to_track") and background_tasks:
         background_tasks.add_task(
             services.increment_campaign_impressions,
-            db,
             feed_data["campaigns_to_track"]
         )
         

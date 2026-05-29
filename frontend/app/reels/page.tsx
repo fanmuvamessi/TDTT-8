@@ -171,10 +171,10 @@ export default function ReelsPage() {
           const data = await response.json();
           const mapped = data.map((c: any) => ({
             id: String(c.id),
-            userId: c.user_id,
+            userId: c.user?.id,
             user: {
               name: c.user?.full_name || "Người dùng",
-              username: c.user?.username || `user_${c.user_id}`,
+              username: c.user?.email ? c.user.email.split("@")[0] : `user_${c.user?.id || 'unknown'}`,
               avatar: c.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
             },
             content: c.content,
@@ -182,10 +182,10 @@ export default function ReelsPage() {
             likes: c.likes_count,
             replies: c.replies ? c.replies.map((r: any) => ({
               id: String(r.id),
-              userId: r.user_id,
+              userId: r.user?.id,
               user: {
                 name: r.user?.full_name || "Người dùng",
-                username: r.user?.username || `user_${r.user_id}`,
+                username: r.user?.email ? r.user.email.split("@")[0] : `user_${r.user?.id || 'unknown'}`,
                 avatar: r.user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
               },
               content: r.content,
@@ -226,6 +226,7 @@ export default function ReelsPage() {
         const c = await response.json();
         const newCommentObj: Comment = {
           id: String(c.id),
+          userId: user?.id,
           user: {
             name: user?.full_name || displayName,
             username: user?.email ? user.email.split("@")[0] : displayUsername,
@@ -527,11 +528,6 @@ export default function ReelsPage() {
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{activeReel.restaurant.name}</span>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Music2 className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{activeReel.music}</span>
             </div>
           </div>
 

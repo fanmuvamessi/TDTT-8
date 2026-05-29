@@ -1,5 +1,5 @@
 import math
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from backend.core.config import settings
@@ -15,6 +15,16 @@ if DATABASE_URL.startswith("sqlite"):
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# Test connection and notify successful connection
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    db_type = DATABASE_URL.split(":")[0].upper()
+    db_name = DATABASE_URL.split("/")[-1].split("?")[0]
+    print(f"[DATABASE] Kết nối thành công tới Database ({db_type}): '{db_name}' ✅")
+except Exception as e:
+    print(f"[DATABASE] ❌ Lỗi kết nối tới Database: {e}")
 
 # Define SQLite math functions mapping so the Haversine SQL formula runs flawlessly on both SQLite and Postgres
 def sqlite_radians(x):

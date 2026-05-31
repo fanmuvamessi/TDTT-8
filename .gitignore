@@ -117,3 +117,10 @@ Document/
 # Keep backend/config directory but ignore its contents
 backend/config/*
 !backend/config/.gitkeep
+
+# =========================
+# AI / Agent specific
+# =========================
+.agents/
+skills-lock.json
+

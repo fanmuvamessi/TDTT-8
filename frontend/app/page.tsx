@@ -565,10 +565,13 @@ export default function HomePage() {
             setModalImageAspect(null);
           }} />
 
-          {/* Modal Container - Double-Bezel Glass Layer */}
-          <div className="relative w-full max-w-xl h-[85vh] z-10 p-2 bg-white/10 dark:bg-black/35 border border-white/20 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] rounded-[2.5rem] backdrop-blur-2xl flex flex-col ease-[cubic-bezier(0.34,1.56,0.64,1)] animate-in fade-in zoom-in-95 duration-300">
-            {/* INNER CORE (Double-Bezel modal structure) */}
-            <div className="flex flex-col w-full h-full rounded-[calc(2.5rem-8px)] bg-card/85 dark:bg-card/55 overflow-hidden border border-white/5 shadow-inner">
+          {/* Modal Container - Double-Bezel Glass Layer with Cinematic Warm Mesh Backdrop */}
+          <div className="relative w-full max-w-xl h-[85vh] z-10 p-2 bg-gradient-to-tr from-amber-500/10 via-white/15 to-orange-500/10 dark:from-amber-950/20 dark:via-black/40 dark:to-orange-950/20 border border-white/30 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.55)] rounded-[2.5rem] backdrop-blur-3xl flex flex-col ease-[cubic-bezier(0.34,1.56,0.64,1)] animate-in fade-in zoom-in-95 duration-300">
+            {/* INNER CORE - Premium Warm Cream (Light) & Obsidian Charcoal (Dark) Bezel */}
+            <div className="relative flex flex-col w-full h-full rounded-[calc(2.5rem-8px)] bg-[#FAF9F6]/98 dark:bg-[#0A0A0A]/95 overflow-hidden border border-white/5 shadow-inner">
+              {/* Subtle ambient premium spotlight halos */}
+              <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] bg-gradient-to-br from-orange-500/8 to-amber-500/0 rounded-full blur-3xl pointer-events-none select-none dark:from-orange-500/4" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[40%] bg-gradient-to-tr from-pink-500/4 to-rose-500/0 rounded-full blur-3xl pointer-events-none select-none dark:from-rose-500/4" />
               
               {/* Close Button */}
               <button 
@@ -712,7 +715,7 @@ export default function HomePage() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         {/* Premium Glass Comment chat bubbles with soft highlights */}
-                        <div className="bg-neutral-100/60 dark:bg-neutral-900/35 border border-neutral-200/50 dark:border-white/5 rounded-2xl px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:border-neutral-300 dark:hover:border-white/10 transition-all duration-300">
+                        <div className="bg-[#F3F2EB]/85 dark:bg-[#121212]/60 border border-neutral-200/30 dark:border-white/5 rounded-2xl px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:border-neutral-300 dark:hover:border-white/10 transition-all duration-300">
                           <p className="text-[10px] font-extrabold text-foreground flex items-center gap-1.5 flex-wrap">
                             <span>{comment.user.name}</span>
                             <span className="text-[9px] text-muted-foreground/60 font-medium">
@@ -1022,7 +1025,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Sticky Footer: Input comment box inside the rounded modal container */}
-                    <div className="p-4.5 bg-card/90 dark:bg-card/65 backdrop-blur-md border-t border-border/30 flex-shrink-0 rounded-b-[calc(2.5rem-8px)]">
+                    <div className="p-4.5 bg-[#FAF9F6]/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-t border-border/30 flex-shrink-0 rounded-b-[calc(2.5rem-8px)]">
                       {replyingTo && (
                         <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/20 rounded-xl px-3 py-1.5 mb-2 text-[10px] font-bold text-orange-500 animate-fade-in">
                           <span>Đang phản hồi @{replyingTo.user.username}</span>

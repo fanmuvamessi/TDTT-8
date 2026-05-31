@@ -264,14 +264,13 @@ export default function ReelsPage() {
 
   const renderComment = (comment: Comment, isReply = false) => {
     return (
-      <div key={comment.id} className={cn("flex gap-3", isReply ? "mt-3.5 pl-6 border-l border-neutral-300/60 dark:border-white/10 md:pl-8 ml-3.5" : "mt-4.5")}>
-        <Avatar className="w-7 h-7 flex-shrink-0 ring-1 ring-orange-500/10 dark:ring-white/10 hover:scale-105 transition-transform duration-300">
+      <div key={comment.id} className={cn("flex gap-3", isReply ? "mt-3 pl-6 border-l-2 border-primary/20 md:pl-8" : "mt-4.5")}>
+        <Avatar className="w-7 h-7 flex-shrink-0 ring-1 ring-primary/10">
           <AvatarImage src={comment.user.avatar} alt={comment.user.name} />
           <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">{comment.user.name[0]}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          {/* Premium Glass Comment chat bubbles with soft highlights */}
-          <div className="bg-neutral-100/60 dark:bg-neutral-900/35 border border-neutral-200/50 dark:border-white/5 rounded-2xl px-4 py-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:border-neutral-300 dark:hover:border-white/10 transition-all duration-300">
+          <div className="bg-[#F3F2EB]/85 dark:bg-[#121212]/60 rounded-2xl px-3.5 py-2.5 border border-neutral-200/30 dark:border-white/5 hover:border-neutral-300 dark:hover:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] transition-all duration-300">
             <p className="text-[10px] font-extrabold text-foreground flex items-center gap-1.5 flex-wrap">
               <span>{comment.user.name}</span>
               <span className="text-[9px] text-muted-foreground/60 font-medium">
@@ -282,12 +281,11 @@ export default function ReelsPage() {
               {comment.content}
             </p>
           </div>
-          
-          {/* Comment actions with custom premium emoji controls */}
-          <div className="flex items-center gap-2 mt-1 px-1 text-[9px] text-muted-foreground/75 font-bold select-none flex-wrap">
-            <span className="font-medium text-muted-foreground/45 mr-1">{comment.createdAt}</span>
-            
-            <button 
+
+          {/* Comment actions */}
+          <div className="flex items-center gap-3.5 mt-1 px-1.5 text-[9px] text-muted-foreground/85 font-bold select-none">
+            <span className="font-medium text-muted-foreground/45">{comment.createdAt}</span>
+            <button
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/interact/comments/${comment.id}/like`, {
@@ -317,19 +315,17 @@ export default function ReelsPage() {
                   console.error("Lỗi khi thích bình luận:", err);
                 }
               }}
-              className="hover:text-red-500 hover:bg-red-500/5 px-2 py-0.5 rounded-md transition-all duration-300 flex items-center gap-1 cursor-pointer"
+              className="hover:text-orange-500 transition-colors flex items-center gap-0.5 cursor-pointer"
             >
-              <span>{comment.likes > 0 ? "❤️" : "🤍"} Thích</span>
-              {comment.likes > 0 && <span className="text-[8px] bg-red-500/10 px-1 rounded-sm text-red-500 font-extrabold">{comment.likes}</span>}
+              <span>❤️ Thích</span>
+              {comment.likes > 0 && <span className="text-[8px] bg-primary/10 px-1 rounded-sm text-primary">{comment.likes}</span>}
             </button>
-            
-            <button 
+            <button
               onClick={() => setReplyingTo(comment)}
-              className="hover:text-orange-500 hover:bg-orange-500/5 px-2 py-0.5 rounded-md transition-all duration-300 flex items-center gap-1 cursor-pointer"
+              className="hover:text-orange-500 transition-colors cursor-pointer"
             >
               <span>💬 Phản hồi</span>
             </button>
-            
             {user && (user.id === Number(comment.userId) || user.role === "admin") && (
               <button
                 onClick={async () => {
@@ -348,7 +344,7 @@ export default function ReelsPage() {
                             .filter(c => c.id !== comment.id)
                             .map(c => {
                               if (c.replies && c.replies.length > 0) {
-                                  return { ...c, replies: removeComment(c.replies) };
+                                return { ...c, replies: removeComment(c.replies) };
                               }
                               return c;
                             });
@@ -369,9 +365,10 @@ export default function ReelsPage() {
                     console.error("Lỗi khi xóa bình luận:", err);
                   }
                 }}
-                className="hover:text-red-500 hover:bg-red-500/5 px-2 py-0.5 rounded-md transition-all duration-300 flex items-center gap-1 cursor-pointer"
+                className="hover:text-red-500 text-red-500/80 transition-colors cursor-pointer flex items-center gap-0.5"
               >
-                <span>🗑️ Xóa</span>
+                <Trash2 className="w-3 h-3" />
+                <span>Xóa</span>
               </button>
             )}
           </div>
@@ -410,7 +407,7 @@ export default function ReelsPage() {
           <div className="w-20 h-20 bg-orange-500/10 rounded-3xl flex items-center justify-center mx-auto text-orange-500 shadow-lg border border-orange-500/20 animate-bounce">
             <Camera className="w-10 h-10" />
           </div>
-          
+
           <div className="space-y-2">
             <h2 className="text-2xl font-black bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
               Chưa có Reels nào
@@ -469,9 +466,9 @@ export default function ReelsPage() {
         >
           {reelsList.map((reel, index) => (
             <div key={`reel-${reel.id}-${index}`} className="h-full w-full snap-start animate-fade-in">
-              <ReelCard 
-                reel={reel} 
-                isActive={index === activeIndex} 
+              <ReelCard
+                reel={reel}
+                isActive={index === activeIndex}
                 onCommentClick={() => setShowComments(!showComments)}
                 isCommentsOpen={showComments}
                 isMuted={isMuted}
@@ -501,10 +498,13 @@ export default function ReelsPage() {
 
       {/* Right Comments Tab (Desktop - Ethereal Glass Side Panel) - OUTER SHELL (Double-Bezel Architecture) */}
       {showComments && !isMobile && activeReel && (
-        <div className="hidden md:flex flex-col w-[380px] lg:w-[430px] border-l border-border/40 bg-card/65 dark:bg-neutral-900/65 backdrop-blur-xl h-full shadow-2xl animate-in slide-in-from-right duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-25 p-2 border border-white/5">
-          
-          {/* INNER CORE (Double-Bezel) */}
-          <div className="flex flex-col w-full h-full rounded-[2rem] bg-card/85 dark:bg-card/45 overflow-hidden border border-white/5 shadow-inner">
+        <div className="hidden md:flex flex-col w-[380px] lg:w-[430px] border-l border-border/40 bg-gradient-to-br from-white/15 via-white/5 to-orange-500/5 dark:from-black/45 dark:via-black/25 dark:to-orange-950/15 h-full shadow-2xl animate-in slide-in-from-right duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-25 p-2 border border-white/5">
+
+          {/* INNER CORE - Premium Warm Cream (Light) & Obsidian Charcoal (Dark) Bezel */}
+          <div className="relative flex flex-col w-full h-full rounded-[2rem] bg-[#FAF9F6]/98 dark:bg-[#0A0A0A]/95 overflow-hidden border border-white/5 shadow-inner">
+            {/* Subtle ambient premium spotlight halos */}
+            <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] bg-gradient-to-br from-orange-500/8 to-amber-500/0 rounded-full blur-3xl pointer-events-none select-none dark:from-orange-500/4" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[40%] bg-gradient-to-tr from-pink-500/4 to-rose-500/0 rounded-full blur-3xl pointer-events-none select-none dark:from-rose-500/4" />
             {/* Header */}
             <div className="p-4 border-b border-border/40 flex items-center justify-between flex-shrink-0 bg-secondary/20 dark:bg-neutral-800/10">
               <div className="flex items-center gap-3">
@@ -525,7 +525,7 @@ export default function ReelsPage() {
             {/* Reel Details & Restaurant Info */}
             <div className="p-4.5 bg-secondary/15 dark:bg-neutral-800/5 border-b border-border/30 space-y-3 flex-shrink-0">
               <p className="text-xs text-foreground leading-relaxed font-semibold break-words">{activeReel.caption}</p>
-              
+
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/10 px-3 py-1.5 rounded-full text-[10px] font-extrabold text-orange-500 cursor-pointer shadow-xs hover:bg-orange-500 hover:text-white transition-all duration-300">
                   <MapPin className="w-3.5 h-3.5 fill-current/15" />
@@ -569,11 +569,11 @@ export default function ReelsPage() {
             </div>
 
             {/* Action Footer: Input comment & quick emojis */}
-            <div className="p-4.5 bg-card/95 border-t border-border/30 flex-shrink-0">
+            <div className="p-4.5 bg-[#FAF9F6]/95 dark:bg-[#0A0A0A]/95 border-t border-border/30 flex-shrink-0">
               {replyingTo && (
                 <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/20 rounded-xl px-3 py-1.5 mb-2 text-[10px] font-bold text-orange-500 animate-in fade-in duration-200">
                   <span>Đang phản hồi @{replyingTo.user.username}</span>
-                  <button 
+                  <button
                     onClick={() => setReplyingTo(null)}
                     className="text-[9px] hover:underline cursor-pointer opacity-80"
                   >
@@ -657,7 +657,7 @@ export default function ReelsPage() {
               {replyingTo && (
                 <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/20 rounded-xl px-2.5 py-1.5 mb-2 text-[10px] font-bold text-orange-500">
                   <span>Đang phản hồi @{replyingTo.user.username}</span>
-                  <button 
+                  <button
                     onClick={() => setReplyingTo(null)}
                     className="text-[9px] hover:underline cursor-pointer opacity-80"
                   >

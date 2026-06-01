@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { CaptionText } from "@/components/caption-text";
 
 interface Comment {
   id: string;
@@ -941,10 +942,11 @@ export default function HomePage() {
 
                       {/* Caption & Time */}
                       <div className="space-y-1.5 px-0.5">
-                        <p className="text-xs text-foreground leading-relaxed font-semibold">
-                          <span className="font-extrabold mr-1.5 text-foreground hover:text-orange-500 cursor-pointer">@{activePost.user.username}</span>
-                          {activePost.caption}
-                        </p>
+                        <CaptionText
+                          username={activePost.user.username}
+                          caption={activePost.caption}
+                          className="text-xs text-foreground leading-relaxed font-semibold"
+                        />
                         <p className="text-[9px] text-muted-foreground/50 tracking-wider font-extrabold uppercase">{activePost.createdAt}</p>
                       </div>
 

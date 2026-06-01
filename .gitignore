@@ -123,4 +123,10 @@ backend/config/*
 # =========================
 .agents/
 skills-lock.json
-
+
+# CHẶN ROO CODE QUÉT CÁC FILE LOG CHAT VÀ CONFIG NỘI BỘ (QUAN TRỌNG)
+.clinetasks/
+.clinerules.bak
+.clinerules
+
+test.py

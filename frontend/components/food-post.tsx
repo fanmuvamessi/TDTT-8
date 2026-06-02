@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { CaptionText } from "@/components/caption-text";
 
 interface FoodPostProps {
   post: {
@@ -252,10 +253,7 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
           </div>
 
           {/* Caption */}
-          <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            <span className="font-bold text-neutral-900 dark:text-neutral-100 mr-2">@{post.user.username}</span>
-            {post.caption}
-          </p>
+          <CaptionText username={post.user.username} caption={post.caption} />
 
           {/* Time */}
           <p className="text-[9px] uppercase tracking-widest text-muted-foreground/50 font-semibold">{post.createdAt}</p>

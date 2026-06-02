@@ -47,6 +47,7 @@
     "embla-carousel-react": "8.6.0",
     "firebase": "^12.13.0",
     "input-otp": "1.4.2",
+    "js-cookie": "^3.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.564.0",
     "mapbox-gl": "^3.24.0",
@@ -66,6 +67,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.0",
+    "@types/js-cookie": "^3.0.6",
     "@types/mapbox-gl": "^3.5.0",
     "@types/node": "^22.19.19",
     "@types/react": "^19.2.15",

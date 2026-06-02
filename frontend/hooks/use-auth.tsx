@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import Cookies from 'js-cookie';
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { ChefHat } from "lucide-react";
@@ -34,13 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { toast } = useToast();
 
-  const publicPaths = ["/login", "/register", "/forgot-password", "/terms", "/privacy"];
-  const isPublicPath = publicPaths.includes(pathname || "");
+
 
   useEffect(() => {
     // Load state from localStorage on mount
     try {
-      const storedToken = localStorage.getItem("token");
+      const storedToken = Cookies.get("token");
       const storedUser = localStorage.getItem("user");
       
       if (storedToken && storedUser) {
@@ -54,23 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    if (!loading) {
-      if (!token && !isPublicPath) {
-        router.replace("/login");
-      }
-    }
-  }, [token, loading, pathname, router, isPublicPath]);
 
   const login = (newToken: string, newUser: User) => {
-    localStorage.setItem("token", newToken);
+    Cookies.set("token", newToken, { expires: 7, path: '/' }); // Set cookie for all paths
     localStorage.setItem("user", JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    Cookies.remove("token", { path: '/' }); // Remove cookie from all paths
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
@@ -78,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       title: "Đã đăng xuất 👋",
       description: "Hẹn gặp lại bạn lần sau nhé!",
     });
-    router.push("/login");
+    // No client-side redirect here, middleware will handle if on protected page
   };
 
   const updateUser = (updatedUser: Partial<User>) => {
@@ -89,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Prevent flash of protected page content while checking or redirecting
-  if (loading || (!token && !isPublicPath)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <div className="flex flex-col items-center space-y-4 animate-pulse">

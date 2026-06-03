@@ -8,27 +8,24 @@ export default function MerchantLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[100dvh] bg-neutral-50 dark:bg-zinc-950">
+    <div className="flex min-h-[100dvh] bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 border-r dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+      <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-sidebar-border bg-sidebar">
         <Sidebar />
       </aside>
 
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
-        <header className="w-full border-b dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 flex items-center justify-between md:justify-end">
-          <div className="md:hidden">
-            {/* Hamburger menu for mobile will go here */}
-            <span className="text-lg font-bold">Menu</span>
-          </div>
+        <header className="sticky top-0 z-10 w-full border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 h-14 flex items-center">
           <Header />
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
           {children}
         </main>
       </div>
+
       <Toaster />
     </div>
   );

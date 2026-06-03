@@ -1,14 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/merchant/page-header";
 import { useState } from "react";
+import { Plus, Pencil, Trash2, Search, X, Utensils } from "lucide-react";
+import Image from "next/image";
 
 interface Dish {
   id: string;
@@ -31,15 +35,15 @@ const mockDishes: Dish[] = [
     description: "A juicy beef patty with lettuce, tomato, and cheese.",
     price: 12.99,
     category: "Main Course",
-    imageUrl: "/placeholder.jpg",
+    imageUrl: "https://picsum.photos/seed/burger/80/80",
   },
   {
     id: "2",
     name: "Caesar Salad",
-    description: "Fresh romaine lettuce with Caesar dressing, croutons, and parmesan cheese.",
+    description: "Fresh romaine lettuce with Caesar dressing, croutons, and parmesan.",
     price: 9.50,
     category: "Appetizer",
-    imageUrl: "/placeholder.jpg",
+    imageUrl: "https://picsum.photos/seed/salad/80/80",
   },
   {
     id: "3",
@@ -47,7 +51,15 @@ const mockDishes: Dish[] = [
     description: "Freshly squeezed orange juice.",
     price: 4.00,
     category: "Drinks",
-    imageUrl: "/placeholder.jpg",
+    imageUrl: "https://picsum.photos/seed/juice/80/80",
+  },
+  {
+    id: "4",
+    name: "Chocolate Lava Cake",
+    description: "Warm chocolate cake with a molten center, served with vanilla ice cream.",
+    price: 8.50,
+    category: "Desserts",
+    imageUrl: "https://picsum.photos/seed/cake/80/80",
   },
 ];
 
@@ -64,182 +76,237 @@ export default function MenuManagementPage() {
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+
+  const filtered = dishes.filter((d) => {
+    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
+    const matchCat = filterCategory === "all" || d.category === filterCategory;
+    return matchSearch && matchCat;
+  });
 
   const handleAddEditDish = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle adding or editing a dish
-    console.log("Add/Edit Dish");
     setIsDishDialogOpen(false);
   };
 
   const handleDeleteDish = (id: string) => {
-    setDishes(dishes.filter((dish) => dish.id !== id));
+    setDishes(dishes.filter((d) => d.id !== id));
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (newCategoryName.trim()) {
-      setCategories([
-        ...categories,
-        { id: String(categories.length + 1), name: newCategoryName.trim() },
-      ]);
+      setCategories([...categories, { id: String(Date.now()), name: newCategoryName.trim() }]);
       setNewCategoryName("");
     }
   };
 
   const handleDeleteCategory = (id: string) => {
-    setCategories(categories.filter((category) => category.id !== id));
+    setCategories(categories.filter((c) => c.id !== id));
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Menu Management</h1>
-
-      {/* Dish List */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Dishes</CardTitle>
+      <PageHeader
+        title="Menu Management"
+        description="Quản lý món ăn và danh mục thực đơn"
+        action={
           <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingDish(null)}>Add New Dish</Button>
+              <Button onClick={() => setEditingDish(null)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Thêm món mới
+              </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[440px]">
               <DialogHeader>
-                <DialogTitle>{editingDish ? "Edit Dish" : "Add New Dish"}</DialogTitle>
+                <DialogTitle>{editingDish ? "Chỉnh sửa món ăn" : "Thêm món mới"}</DialogTitle>
                 <DialogDescription>
-                  {editingDish
-                    ? "Make changes to your dish here." 
-                    : "Add a new dish to your menu."}
+                  {editingDish ? "Cập nhật thông tin món ăn." : "Thêm món ăn mới vào thực đơn."}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleAddEditDish} className="grid gap-4 py-4">
+              <form onSubmit={handleAddEditDish} className="grid gap-4 py-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="dishName">Dish Name</Label>
-                  <Input
-                    id="dishName"
-                    defaultValue={editingDish?.name || ""}
-                    placeholder="e.g., Spicy Noodles"
-                  />
+                  <Label htmlFor="dishName">Tên món</Label>
+                  <Input id="dishName" defaultValue={editingDish?.name ?? ""} placeholder="Ví dụ: Phở bò đặc biệt" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="dishDescription">Description</Label>
-                  <Textarea
-                    id="dishDescription"
-                    defaultValue={editingDish?.description || ""}
-                    placeholder="A brief description of the dish..."
-                  />
+                  <Label htmlFor="dishDescription">Mô tả</Label>
+                  <Textarea id="dishDescription" defaultValue={editingDish?.description ?? ""} placeholder="Mô tả ngắn về món ăn..." rows={3} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="dishPrice">Giá (USD)</Label>
+                    <Input id="dishPrice" type="number" step="0.01" defaultValue={editingDish?.price.toString() ?? ""} placeholder="0.00" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dishCategory">Danh mục</Label>
+                    <Select defaultValue={editingDish?.category ?? ""}>
+                      <SelectTrigger id="dishCategory">
+                        <SelectValue placeholder="Chọn danh mục" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="dishPrice">Price</Label>
-                  <Input
-                    id="dishPrice"
-                    type="number"
-                    step="0.01"
-                    defaultValue={editingDish?.price.toString() || ""}
-                    placeholder="e.g., 15.99"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="dishCategory">Category</Label>
-                  <Select defaultValue={editingDish?.category || ""}>
-                    <SelectTrigger id="dishCategory">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="dishImage">Image URL</Label>
-                  <Input
-                    id="dishImage"
-                    defaultValue={editingDish?.imageUrl || ""}
-                    placeholder="e.g., /dishes/spicy-noodles.jpg"
-                  />
+                  <Label htmlFor="dishImage">URL hình ảnh</Label>
+                  <Input id="dishImage" defaultValue={editingDish?.imageUrl ?? ""} placeholder="https://..." />
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Save Dish</Button>
+                  <Button type="submit">Lưu món ăn</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
+        }
+      />
+
+      {/* Dishes Card */}
+      <Card className="gap-0 py-0">
+        <CardHeader className="px-5 pt-5 pb-4 border-b border-border">
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm món ăn..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Tất cả danh mục" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả danh mục</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dishes.map((dish) => (
-                <TableRow key={dish.id}>
-                  <TableCell className="font-medium">{dish.name}</TableCell>
-                  <TableCell>{dish.category}</TableCell>
-                  <TableCell>${dish.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mr-2"
-                      onClick={() => {
-                        setEditingDish(dish);
-                        setIsDishDialogOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteDish(dish.id)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
+
+        <CardContent className="px-0 py-0">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Utensils className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Không tìm thấy món ăn</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {search || filterCategory !== "all" ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm" : "Thêm món đầu tiên để bắt đầu"}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-5 w-12"></TableHead>
+                  <TableHead>Tên món</TableHead>
+                  <TableHead className="hidden sm:table-cell">Danh mục</TableHead>
+                  <TableHead>Giá</TableHead>
+                  <TableHead className="text-right pr-5">Thao tác</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((dish) => (
+                  <TableRow key={dish.id} className="group">
+                    <TableCell className="pl-5">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0">
+                        <Image
+                          src={dish.imageUrl}
+                          alt={dish.name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-sm text-foreground">{dish.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 hidden md:block">{dish.description}</p>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {dish.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium tabular-nums text-sm">
+                      ${dish.price.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right pr-5">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => { setEditingDish(dish); setIsDishDialogOpen(true); }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteDish(dish.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Categories Management */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Menu Categories</CardTitle>
-          <form onSubmit={handleAddCategory} className="flex space-x-2">
-            <Input
-              placeholder="New Category Name"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-            />
-            <Button type="submit">Add Category</Button>
-          </form>
+      {/* Categories Card */}
+      <Card className="gap-0 py-0">
+        <CardHeader className="px-5 pt-5 pb-4 border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Danh mục thực đơn</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{categories.length} danh mục</p>
+            </div>
+            <form onSubmit={handleAddCategory} className="flex gap-2">
+              <Input
+                placeholder="Tên danh mục mới..."
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                className="w-48"
+              />
+              <Button type="submit" size="sm" variant="outline" className="gap-1.5 shrink-0">
+                <Plus className="w-3.5 h-3.5" />
+                Thêm
+              </Button>
+            </form>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-2">
-            {categories.map((category) => (
+        <CardContent className="px-5 py-4">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
               <div
-                key={category.id}
-                className="flex justify-between items-center p-2 border rounded-md"
+                key={cat.id}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary/50 text-sm font-medium text-foreground group"
               >
-                <span>{category.name}</span>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteCategory(category.id)}
+                {cat.name}
+                <button
+                  onClick={() => handleDeleteCategory(cat.id)}
+                  className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
                 >
-                  Delete
-                </Button>
+                  <X className="w-3 h-3" />
+                </button>
               </div>
             ))}
           </div>

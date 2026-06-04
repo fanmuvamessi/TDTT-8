@@ -20,8 +20,21 @@ if sys.platform.startswith("win"):
 from backend.core.database import SessionLocal, engine, Base
 from backend.core.all_models import User, Merchant, Menu, Video, Like, Comment, Campaign
 
-# Xóa và tạo lại tất cả các bảng để đảm bảo cập nhật thay đổi schema mới
-Base.metadata.drop_all(bind=engine)
+# Tự động nâng cấp các cột mới nếu đã có bảng cũ mà không làm mất dữ liệu
+from sqlalchemy import text
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN shares_count INTEGER DEFAULT 0 NOT NULL"))
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN reup_from_id INTEGER REFERENCES videos(id)"))
+except Exception:
+    pass
+
+# Tạo các bảng mới (như user_shares, user_follows, hidden_videos) nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
 def seed_database():

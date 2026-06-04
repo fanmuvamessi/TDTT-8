@@ -93,10 +93,6 @@ export default function PromotionsManagementPage() {
     setPromotions(promotions.filter((p) => p.id !== id));
   };
 
-  const handleToggleActive = (id: string) => {
-    setPromotions(promotions.map((p) => p.id === id ? { ...p, isActive: !p.isActive } : p));
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -127,7 +123,6 @@ export default function PromotionsManagementPage() {
                   <TableHead className="pl-5">Tiêu đề</TableHead>
                   <TableHead className="hidden md:table-cell">Thời gian</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead className="hidden sm:table-cell">Bật/tắt</TableHead>
                   <TableHead className="text-right pr-5">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -149,12 +144,6 @@ export default function PromotionsManagementPage() {
                         <Badge variant={status.variant} className={status.className}>
                           {status.label}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Switch
-                          checked={promo.isActive}
-                          onCheckedChange={() => handleToggleActive(promo.id)}
-                        />
                       </TableCell>
                       <TableCell className="text-right pr-5">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

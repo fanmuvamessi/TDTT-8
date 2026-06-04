@@ -61,6 +61,9 @@ export function Header() {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
         </Button>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+          <LogOut className="w-4 h-4" />
+        </Button>
       </div>
     </div>
   );

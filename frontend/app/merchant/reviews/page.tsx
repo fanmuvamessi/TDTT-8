@@ -67,7 +67,7 @@ const mockReviews: Review[] = [
   },
 ];
 
-function StarRow({ rating, filled }: { rating: number; filled: boolean }) {
+function StarRow({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
@@ -233,7 +233,7 @@ export default function ReviewsManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
-                      <StarRow rating={review.rating} filled />
+                      <StarRow rating={review.rating} />
                     </TableCell>
                     <TableCell className="hidden lg:table-cell py-4 max-w-xs">
                       <p className="text-sm text-foreground line-clamp-2">{review.comment}</p>
@@ -280,7 +280,7 @@ export default function ReviewsManagementPage() {
           {respondingTo && (
             <div className="px-3 py-2.5 bg-muted rounded-lg text-sm text-muted-foreground italic border-l-2 border-amber-400/50">
               <div className="flex items-center gap-1 mb-1 not-italic">
-                <StarRow rating={respondingTo.rating} filled />
+                <StarRow rating={respondingTo.rating} />
               </div>
               "{respondingTo.comment}"
             </div>

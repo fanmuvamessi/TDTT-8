@@ -12,17 +12,22 @@ import { Eye, EyeOff, Loader2, TriangleAlert } from "lucide-react";
 
 function PasswordInput({ id, placeholder }: { id: string; placeholder?: string }) {
   const [show, setShow] = useState(false);
+  const [value, setValue] = useState("");
+
   return (
     <div className="relative">
       <Input
         id={id}
         type={show ? "text" : "password"}
         placeholder={placeholder ?? "••••••••"}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
         className="pr-10"
+        autoComplete="new-password"
       />
       <button
         type="button"
-        onClick={() => setShow(!show)}
+        onClick={() => setShow((s) => !s)}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
         tabIndex={-1}
       >

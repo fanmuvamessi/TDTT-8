@@ -32,6 +32,22 @@ from backend.modules.router import api_router
 # Tự động tạo các bảng cơ sở dữ liệu nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
+# Tự động kiểm tra và thêm cột mới nếu chưa có (Hỗ trợ tự nâng cấp cấu trúc cho cả Postgres trên Vercel và SQLite local)
+from sqlalchemy import text
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN shares_count INTEGER DEFAULT 0 NOT NULL"))
+        print("[MIGRATION] Đã tự động thêm cột shares_count vào bảng videos.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN reup_from_id INTEGER REFERENCES videos(id)"))
+        print("[MIGRATION] Đã tự động thêm cột reup_from_id vào bảng videos.")
+except Exception:
+    pass
+
 app = FastAPI(
     title="Food Review API",
     description="Hệ thống Backend MVP cho mạng xã hội & Đánh giá ẩm thực Food Review",

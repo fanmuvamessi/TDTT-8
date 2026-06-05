@@ -317,6 +317,12 @@ export default function MapPage() {
               {/* Nested CTA Pill (Button-in-Button Architecture) */}
               <div className="flex gap-3 pt-2">
                 <Button 
+                  onClick={() => {
+                    if (selectedRestaurant?.lat && selectedRestaurant?.lng) {
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedRestaurant.lat},${selectedRestaurant.lng}`;
+                      window.open(url, "_blank");
+                    }
+                  }}
                   size="sm" 
                   className={cn(
                     "flex-1 text-xs font-extrabold rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md hover:shadow-lg active:scale-95 group transition-all duration-300",

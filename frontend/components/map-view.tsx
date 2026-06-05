@@ -173,6 +173,12 @@ export function MapView({
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
+        /* Mapbox default overrides */
+        .mapboxgl-marker {
+          position: absolute !important;
+          will-change: transform;
+        }
+
         /* Custom Marker styles */
         .custom-gourmet-marker {
           position: relative;
@@ -180,17 +186,24 @@ export function MapView({
           height: 38px;
           cursor: pointer;
           z-index: 10;
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .custom-gourmet-marker:hover {
-          transform: scale(1.12);
           z-index: 20;
         }
 
-        .custom-gourmet-marker.active {
+        .custom-gourmet-marker:hover .marker-pin {
+          transform: scale(1.12);
+        }
+
+        .custom-gourmet-marker.active .marker-pin {
           transform: scale(1.28);
-          z-index: 50;
+          background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+          border-color: #ffffff;
+        }
+
+        .custom-gourmet-marker.active:hover .marker-pin {
+          transform: scale(1.35);
         }
 
         .marker-pin {
@@ -205,12 +218,7 @@ export function MapView({
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: background 0.3s ease, border-color 0.3s ease;
-        }
-
-        .custom-gourmet-marker.active .marker-pin {
-          background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
-          border-color: #ffffff;
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, border-color 0.3s ease;
         }
 
         .marker-pulse {

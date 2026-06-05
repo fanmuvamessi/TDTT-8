@@ -124,8 +124,6 @@
   }
 }
 
-/* Leaflet CSS Import */
-@import "leaflet/dist/leaflet.css";
 
 /* Custom scrollbar hide */
 .scrollbar-hide {

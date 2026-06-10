@@ -778,6 +778,26 @@ export default function HomePage() {
                           
                           <button 
                             onClick={async () => {
+                              const isLiked = !!comment.isLiked;
+                              const nextLiked = !isLiked;
+                              const nextLikes = nextLiked ? comment.likes + 1 : Math.max(0, comment.likes - 1);
+                              
+                              // Optimistic update
+                              setActiveComments(prev => {
+                                const updateLike = (cList: Comment[]): Comment[] => {
+                                  return cList.map(c => {
+                                    if (c.id === comment.id) {
+                                      return { ...c, isLiked: nextLiked, likes: nextLikes };
+                                    }
+                                    if (c.replies && c.replies.length > 0) {
+                                      return { ...c, replies: updateLike(c.replies) };
+                                    }
+                                    return c;
+                                  });
+                                };
+                                return updateLike(prev);
+                              });
+
                               try {
                                 const response = await fetch(`/api/interact/comments/${comment.id}/like`, {
                                   method: "POST",
@@ -791,7 +811,23 @@ export default function HomePage() {
                                     const updateLike = (cList: Comment[]): Comment[] => {
                                       return cList.map(c => {
                                         if (c.id === comment.id) {
-                                          return { ...c, likes: data.likes_count };
+                                          return { ...c, isLiked: data.liked, likes: data.likes_count };
+                                        }
+                                        if (c.replies && c.replies.length > 0) {
+                                          return { ...c, replies: updateLike(c.replies) };
+                                        }
+                                        return c;
+                                      });
+                                    };
+                                    return updateLike(prev);
+                                  });
+                                } else {
+                                  // Rollback on error
+                                  setActiveComments(prev => {
+                                    const updateLike = (cList: Comment[]): Comment[] => {
+                                      return cList.map(c => {
+                                        if (c.id === comment.id) {
+                                          return { ...c, isLiked: isLiked, likes: comment.likes };
                                         }
                                         if (c.replies && c.replies.length > 0) {
                                           return { ...c, replies: updateLike(c.replies) };
@@ -804,11 +840,26 @@ export default function HomePage() {
                                 }
                               } catch (err) {
                                 console.error("Lỗi khi thích bình luận:", err);
+                                // Rollback on network error
+                                setActiveComments(prev => {
+                                  const updateLike = (cList: Comment[]): Comment[] => {
+                                    return cList.map(c => {
+                                      if (c.id === comment.id) {
+                                        return { ...c, isLiked: isLiked, likes: comment.likes };
+                                      }
+                                      if (c.replies && c.replies.length > 0) {
+                                        return { ...c, replies: updateLike(c.replies) };
+                                      }
+                                      return c;
+                                    });
+                                  };
+                                  return updateLike(prev);
+                                });
                               }
                             }}
                             className="hover:text-red-500 hover:bg-red-500/5 px-2 py-0.5 rounded-md transition-all duration-300 flex items-center gap-1 cursor-pointer"
                           >
-                            <span>{comment.likes > 0 ? "❤️" : "🤍"} Thích</span>
+                            <span>{comment.isLiked ? "❤️" : (comment.likes > 0 && comment.isLiked !== false ? "❤️" : "🤍")} Thích</span>
                             {comment.likes > 0 && <span className="text-[8px] bg-red-500/10 px-1 rounded-sm text-red-500 font-extrabold">{comment.likes}</span>}
                           </button>
                           
@@ -823,6 +874,32 @@ export default function HomePage() {
                             <button
                               onClick={async () => {
                                 if (!confirm("Bạn có chắc chắn muốn xóa bình luận này không?")) return;
+                                
+                                const originalComments = [...activeComments];
+                                
+                                // Optimistic delete from screen
+                                setActiveComments(prev => {
+                                  const removeComment = (cList: Comment[]): Comment[] => {
+                                    return cList
+                                      .filter(c => c.id !== comment.id)
+                                      .map(c => {
+                                        if (c.replies && c.replies.length > 0) {
+                                          return { ...c, replies: removeComment(c.replies) };
+                                        }
+                                        return c;
+                                      });
+                                  };
+                                  return removeComment(prev);
+                                });
+                                
+                                // Optimistic decrement count
+                                setPostsList(prev => prev.map(p => {
+                                  if (p.id === activePost.id) {
+                                    return { ...p, comments: Math.max(0, p.comments - 1) };
+                                  }
+                                  return p;
+                                }));
+
                                 try {
                                   const response = await fetch(`/api/interact/comments/${comment.id}`, {
                                     method: "DELETE",
@@ -830,32 +907,28 @@ export default function HomePage() {
                                       "Authorization": `Bearer ${token}`
                                     }
                                   });
-                                  if (response.ok) {
-                                    setActiveComments(prev => {
-                                      const removeComment = (cList: Comment[]): Comment[] => {
-                                        return cList
-                                          .filter(c => c.id !== comment.id)
-                                          .map(c => {
-                                            if (c.replies && c.replies.length > 0) {
-                                              return { ...c, replies: removeComment(c.replies) };
-                                            }
-                                            return c;
-                                          });
-                                      };
-                                      return removeComment(prev);
-                                    });
+                                  if (!response.ok) {
+                                    // Rollback on API error
+                                    setActiveComments(originalComments);
                                     setPostsList(prev => prev.map(p => {
                                       if (p.id === activePost.id) {
-                                        return { ...p, comments: Math.max(0, p.comments - 1) };
+                                        return { ...p, comments: p.comments + 1 };
                                       }
                                       return p;
                                     }));
-                                  } else {
                                     const errData = await response.json();
                                     alert(errData.detail || "Không thể xóa bình luận.");
                                   }
                                 } catch (err) {
                                   console.error("Lỗi khi xóa bình luận:", err);
+                                  // Rollback on network error
+                                  setActiveComments(originalComments);
+                                  setPostsList(prev => prev.map(p => {
+                                    if (p.id === activePost.id) {
+                                      return { ...p, comments: p.comments + 1 };
+                                    }
+                                    return p;
+                                  }));
                                 }
                               }}
                               className="hover:text-red-500 hover:bg-red-500/5 px-2 py-0.5 rounded-md transition-all duration-300 flex items-center gap-1 cursor-pointer"

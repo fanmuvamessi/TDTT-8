@@ -353,6 +353,26 @@ export default function ReelsPage() {
             <span className="font-medium text-muted-foreground/45">{comment.createdAt}</span>
             <button
               onClick={async () => {
+                const isLiked = !!comment.isLiked;
+                const nextLiked = !isLiked;
+                const nextLikes = nextLiked ? comment.likes + 1 : Math.max(0, comment.likes - 1);
+                
+                // Optimistic Update
+                setActiveComments(prev => {
+                  const updateLike = (cList: Comment[]): Comment[] => {
+                    return cList.map(c => {
+                      if (c.id === comment.id) {
+                        return { ...c, isLiked: nextLiked, likes: nextLikes };
+                      }
+                      if (c.replies && c.replies.length > 0) {
+                        return { ...c, replies: updateLike(c.replies) };
+                      }
+                      return c;
+                    });
+                  };
+                  return updateLike(prev);
+                });
+
                 try {
                   const response = await fetch(`/api/interact/comments/${comment.id}/like`, {
                     method: "POST",
@@ -366,7 +386,23 @@ export default function ReelsPage() {
                       const updateLike = (cList: Comment[]): Comment[] => {
                         return cList.map(c => {
                           if (c.id === comment.id) {
-                            return { ...c, likes: data.likes_count };
+                            return { ...c, isLiked: data.liked, likes: data.likes_count };
+                          }
+                          if (c.replies && c.replies.length > 0) {
+                            return { ...c, replies: updateLike(c.replies) };
+                          }
+                          return c;
+                        });
+                      };
+                      return updateLike(prev);
+                    });
+                  } else {
+                    // Rollback
+                    setActiveComments(prev => {
+                      const updateLike = (cList: Comment[]): Comment[] => {
+                        return cList.map(c => {
+                          if (c.id === comment.id) {
+                            return { ...c, isLiked: isLiked, likes: comment.likes };
                           }
                           if (c.replies && c.replies.length > 0) {
                             return { ...c, replies: updateLike(c.replies) };
@@ -379,11 +415,26 @@ export default function ReelsPage() {
                   }
                 } catch (err) {
                   console.error("Lỗi khi thích bình luận:", err);
+                  // Rollback
+                  setActiveComments(prev => {
+                    const updateLike = (cList: Comment[]): Comment[] => {
+                      return cList.map(c => {
+                        if (c.id === comment.id) {
+                          return { ...c, isLiked: isLiked, likes: comment.likes };
+                        }
+                        if (c.replies && c.replies.length > 0) {
+                          return { ...c, replies: updateLike(c.replies) };
+                        }
+                        return c;
+                      });
+                    };
+                    return updateLike(prev);
+                  });
                 }
               }}
               className="hover:text-orange-500 transition-colors flex items-center gap-0.5 cursor-pointer"
             >
-              <span>❤️ Thích</span>
+              <span>{comment.isLiked ? "❤️" : (comment.likes > 0 && comment.isLiked !== false ? "❤️" : "🤍")} Thích</span>
               {comment.likes > 0 && <span className="text-[8px] bg-primary/10 px-1 rounded-sm text-primary">{comment.likes}</span>}
             </button>
             <button
@@ -396,6 +447,32 @@ export default function ReelsPage() {
               <button
                 onClick={async () => {
                   if (!confirm("Bạn có chắc chắn muốn xóa bình luận này không?")) return;
+                  
+                  const originalComments = [...activeComments];
+                  
+                  // Optimistic delete from screen
+                  setActiveComments(prev => {
+                    const removeComment = (cList: Comment[]): Comment[] => {
+                      return cList
+                        .filter(c => c.id !== comment.id)
+                        .map(c => {
+                          if (c.replies && c.replies.length > 0) {
+                            return { ...c, replies: removeComment(c.replies) };
+                          }
+                          return c;
+                        });
+                    };
+                    return removeComment(prev);
+                  });
+                  
+                  // Optimistic decrement in reels list count
+                  setReelsList(prev => prev.map(r => {
+                    if (r.id === activeReel.id) {
+                      return { ...r, comments: Math.max(0, r.comments - 1) };
+                    }
+                    return r;
+                  }));
+
                   try {
                     const response = await fetch(`/api/interact/comments/${comment.id}`, {
                       method: "DELETE",
@@ -403,32 +480,28 @@ export default function ReelsPage() {
                         "Authorization": `Bearer ${token}`
                       }
                     });
-                    if (response.ok) {
-                      setActiveComments(prev => {
-                        const removeComment = (cList: Comment[]): Comment[] => {
-                          return cList
-                            .filter(c => c.id !== comment.id)
-                            .map(c => {
-                              if (c.replies && c.replies.length > 0) {
-                                return { ...c, replies: removeComment(c.replies) };
-                              }
-                              return c;
-                            });
-                        };
-                        return removeComment(prev);
-                      });
+                    if (!response.ok) {
+                      // Rollback
+                      setActiveComments(originalComments);
                       setReelsList(prev => prev.map(r => {
                         if (r.id === activeReel.id) {
-                          return { ...r, comments: Math.max(0, r.comments - 1) };
+                          return { ...r, comments: r.comments + 1 };
                         }
                         return r;
                       }));
-                    } else {
                       const errData = await response.json();
                       alert(errData.detail || "Không thể xóa bình luận.");
                     }
                   } catch (err) {
                     console.error("Lỗi khi xóa bình luận:", err);
+                    // Rollback
+                    setActiveComments(originalComments);
+                    setReelsList(prev => prev.map(r => {
+                      if (r.id === activeReel.id) {
+                        return { ...r, comments: r.comments + 1 };
+                      }
+                      return r;
+                    }));
                   }
                 }}
                 className="hover:text-red-500 text-red-500/80 transition-colors cursor-pointer flex items-center gap-0.5"

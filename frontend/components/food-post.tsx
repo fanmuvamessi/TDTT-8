@@ -361,11 +361,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
             <div className="flex items-center gap-4">
               <button
                 onClick={handleLike}
-                className="flex items-center gap-1.5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-red-500 group/like"
+                className="flex items-center gap-1.5 transition-all duration-150 hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-red-500 group/like"
               >
                 <Heart
                   className={cn(
-                    "w-5 h-5 stroke-[1.5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                    "w-5 h-5 stroke-[1.5] transition-all duration-150",
                     post.isLiked
                       ? "text-red-500 fill-red-500 stroke-[2] scale-110"
                       : "group-hover/like:stroke-red-500 group-hover/like:scale-105"
@@ -376,9 +376,9 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
               
               <button 
                 onClick={onCommentClick || onPostClick}
-                className="flex items-center gap-1.5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-orange-500 group/comment"
+                className="flex items-center gap-1.5 transition-all duration-150 hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-orange-500 group/comment"
               >
-                <MessageCircle className="w-5 h-5 stroke-[1.5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/comment:stroke-orange-500 group-hover/comment:scale-105" />
+                <MessageCircle className="w-5 h-5 stroke-[1.5] transition-all duration-150 group-hover/comment:stroke-orange-500 group-hover/comment:scale-105" />
                 <span className="text-xs font-bold tracking-wide">
                   {formatNumber(post.comments)}
                 </span>
@@ -388,11 +388,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
                 <button 
                   onClick={() => setShowShareMenu(!showShareMenu)} 
                   className={cn(
-                    "flex items-center gap-1.5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-blue-500 group/share",
+                    "flex items-center gap-1.5 transition-all duration-150 hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-blue-500 group/share",
                     showShareMenu && "text-blue-500 scale-105"
                   )}
                 >
-                  <Share2 className="w-5 h-5 stroke-[1.5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/share:stroke-blue-500 group-hover/share:scale-105" />
+                  <Share2 className="w-5 h-5 stroke-[1.5] transition-all duration-150 group-hover/share:stroke-blue-500 group-hover/share:scale-105" />
                   <span className="text-xs font-bold tracking-wide">{formatNumber(shares)}</span>
                 </button>
                 
@@ -425,11 +425,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
             
             <button 
               onClick={handleSave} 
-              className="transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-amber-500 group/save"
+              className="transition-all duration-150 hover:scale-110 active:scale-95 text-neutral-600 dark:text-neutral-400 hover:text-amber-500 group/save"
             >
               <Bookmark
                 className={cn(
-                  "w-5 h-5 stroke-[1.5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                  "w-5 h-5 stroke-[1.5] transition-all duration-150",
                   isSaved
                     ? "text-amber-500 fill-amber-500 stroke-[2] scale-110"
                     : "group-hover/save:stroke-amber-500 group-hover/save:scale-105"

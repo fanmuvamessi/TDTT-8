@@ -32,6 +32,7 @@ export function MapView({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const hasInitialAutofitRef = useRef(false);
   const [tokenError, setTokenError] = useState(!hasValidToken);
 
   // Initialize Mapbox Map Instance
@@ -160,8 +161,8 @@ export function MapView({
       markersRef.current.push(marker);
     });
 
-    // Auto-fit map camera bounds to show all markers inside the viewport
-    if (filteredRestaurants.length > 0) {
+    // Auto-fit map camera bounds to show all markers inside the viewport ONLY on the initial page load
+    if (filteredRestaurants.length > 0 && !hasInitialAutofitRef.current) {
       const bounds = new mapboxgl.LngLatBounds();
       
       filteredRestaurants.forEach((res) => {
@@ -184,6 +185,8 @@ export function MapView({
         maxZoom: 15, // Cap maximum zoom (to prevent overzooming on a single pin)
         duration: 1200 // Smooth zoom animation duration
       });
+
+      hasInitialAutofitRef.current = true;
     }
   }, [filteredRestaurants, onSelectRestaurant]);
 

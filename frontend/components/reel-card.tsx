@@ -131,6 +131,9 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
     }
     if (!reel.reviewerId || isMe) return;
 
+    const previousFollowing = isFollowing;
+    setIsFollowing(true); // Optimistic Update
+
     try {
       const endpoint = `/api/interact/users/${reel.reviewerId}/follow`;
       const res = await fetch(endpoint, {
@@ -139,10 +142,13 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
           "Authorization": `Bearer ${token}`
         }
       });
-      if (res.ok) {
-        setIsFollowing(true);
+      if (!res.ok) {
+        setIsFollowing(previousFollowing); // Rollback on error
+        const err = await res.json();
+        alert(err.detail || "Không thể theo dõi.");
       }
     } catch (err) {
+      setIsFollowing(previousFollowing); // Rollback on network error
       console.error("Lỗi khi theo dõi:", err);
     }
   };
@@ -399,10 +405,10 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
           {/* Like */}
           <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
               isLiked 
                 ? "bg-red-500/20 border border-red-500/50 text-red-500 scale-105" 
-                : "bg-white/15 border border-white/20 text-white hover:bg-red-500 hover:border-red-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-red-500 md:hover:border-red-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-red-500 dark:md:hover:border-red-500"
+                : "bg-white/15 border border-white/20 text-white hover:bg-red-50 hover:border-red-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-red-500 md:hover:border-red-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-red-500 dark:md:hover:border-red-500"
             )}>
               <Heart
                 className={cn(
@@ -417,7 +423,7 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
           {/* Comment */}
           <button onClick={onCommentClick} className="flex flex-col items-center gap-1 group">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
               isCommentsOpen 
                 ? "bg-orange-500/20 border border-orange-500/50 text-orange-500 scale-105" 
                 : "bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500"
@@ -437,7 +443,7 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
               className="flex flex-col items-center gap-1 cursor-pointer"
             >
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg backdrop-blur-md",
+                "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg backdrop-blur-md",
                 showShareMenu
                   ? "bg-orange-500 border border-orange-500 text-white"
                   : "bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500"
@@ -479,7 +485,7 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
           {/* Mute/Unmute sound option */}
           {isVideoFile && (
             <button onClick={toggleMute} className="flex flex-col items-center group">
-              <div className="w-10 h-10 bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500 rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md">
+              <div className="w-10 h-10 bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md">
                 {isMuted ? (
                   <VolumeX className="w-5 h-5 group-hover:scale-108 transition-all duration-300" />
                 ) : (
@@ -495,7 +501,7 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
               <button 
                 onClick={() => setShowMenu(!showMenu)}
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
                   showMenu 
                     ? "bg-orange-500/20 border border-orange-500/50 text-orange-500 scale-105" 
                     : "bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500"

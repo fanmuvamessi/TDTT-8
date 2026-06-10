@@ -685,10 +685,10 @@ export default function ReelsPage() {
                   size="sm" 
                   onClick={handleFollowToggleActiveReel}
                   className={cn(
-                    "h-7 text-xs font-extrabold px-4 rounded-full text-white hover:scale-105 active:scale-95 transition-all duration-300",
+                    "h-7 text-xs font-extrabold px-4 rounded-full hover:scale-105 active:scale-95 transition-all duration-300 border cursor-pointer",
                     activeReel.user.is_following 
-                      ? "bg-secondary text-foreground hover:bg-secondary/80 border border-border" 
-                      : "bg-orange-500 hover:bg-orange-600 text-white"
+                      ? "bg-secondary text-neutral-400 dark:text-neutral-500 hover:text-foreground border-neutral-200 dark:border-neutral-800" 
+                      : "bg-orange-500 hover:bg-orange-600 text-white border-orange-500/20"
                   )}
                 >
                   {activeReel.user.is_following ? "Đang theo dõi" : "Theo dõi"}

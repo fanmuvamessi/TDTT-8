@@ -18,6 +18,7 @@ interface FoodPostProps {
       name: string;
       username: string;
       avatar: string;
+      is_following?: boolean;
     };
     restaurant: {
       name: string;
@@ -47,10 +48,11 @@ interface FoodPostProps {
   onCommentClick?: () => void;
   onLikeToggle?: (isLiked: boolean, likesCount: number) => void;
   onShareUpdate?: (sharesCount: number) => void;
+  onFollowToggle?: (isFollowing: boolean) => void;
   onDelete?: () => void;
 }
 
-export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle, onShareUpdate, onDelete }: FoodPostProps) {
+export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle, onShareUpdate, onFollowToggle, onDelete }: FoodPostProps) {
   const { token, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [isSaved, setIsSaved] = useState(post.isSaved);
@@ -58,6 +60,12 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   useEffect(() => {
     setIsSaved(post.isSaved);
   }, [post.isSaved]);
+
+  const [isFollowing, setIsFollowing] = useState(post.user.is_following || false);
+
+  useEffect(() => {
+    setIsFollowing(post.user.is_following || false);
+  }, [post.user.is_following]);
   const [shares, setShares] = useState(post.shares || 0);
   const isLikePending = useRef(false);
 
@@ -122,6 +130,44 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   };
 
   const canDelete = user && (user.id === post.reviewerId || user.role === "admin");
+
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) {
+      alert("Vui lòng đăng nhập để theo dõi reviewer này.");
+      return;
+    }
+    if (!post.reviewerId || (user && user.id === post.reviewerId)) return;
+
+    const previousFollowing = isFollowing;
+    const nextFollowing = !isFollowing;
+    setIsFollowing(nextFollowing); // Optimistic Update
+
+    try {
+      const endpoint = `/api/interact/users/${post.reviewerId}/${nextFollowing ? "follow" : "unfollow"}`;
+      const method = nextFollowing ? "POST" : "DELETE";
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFollowing(data.is_following);
+        if (onFollowToggle) {
+          onFollowToggle(data.is_following);
+        }
+      } else {
+        setIsFollowing(previousFollowing); // Rollback on error
+        const err = await res.json();
+        alert(err.detail || "Thao tác thất bại.");
+      }
+    } catch (err) {
+      setIsFollowing(previousFollowing); // Rollback on network error
+      console.error("Lỗi khi theo dõi:", err);
+    }
+  };
 
   const handleDeletePost = async () => {
     if (!token) return;
@@ -223,10 +269,26 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
               </Avatar>
             </Link>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Link href={post.reviewerId ? `/profile/${post.reviewerId}` : "/profile"} className="hover:underline cursor-pointer">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground/75 font-semibold">@{post.user.username}</p>
                 </Link>
+                {post.reviewerId && user?.id !== post.reviewerId && (
+                  <>
+                    <span className="text-[10px] text-muted-foreground/40 font-bold">•</span>
+                    <button 
+                      onClick={handleFollow}
+                      className={cn(
+                        "text-[10px] font-extrabold transition-all duration-150 active:scale-95 cursor-pointer pb-0.5",
+                        isFollowing 
+                          ? "text-neutral-400 dark:text-neutral-500 hover:text-foreground" 
+                          : "text-orange-500 hover:text-orange-600"
+                      )}
+                    >
+                      {isFollowing ? "Đang theo dõi" : "Theo dõi"}
+                    </button>
+                  </>
+                )}
               </div>
               <div 
                 onClick={onPostClick}

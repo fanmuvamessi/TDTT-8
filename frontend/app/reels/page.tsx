@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { formatRelativeTime } from "@/lib/time";
+import { globalAppCache } from "@/lib/cache";
 
 interface Comment {
   id: string;
@@ -41,8 +42,12 @@ export default function ReelsPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [reelsList, setReelsList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [reelsList, setReelsList] = useState<any[]>(() => {
+    return globalAppCache.reels || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    return !globalAppCache.reels;
+  });
   const [activeComments, setActiveComments] = useState<Comment[]>([]);
   const [isFetchingComments, setIsFetchingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
@@ -128,6 +133,9 @@ export default function ReelsPage() {
 
   useEffect(() => {
     const fetchReels = async () => {
+      if (!globalAppCache.reels) {
+        setIsLoading(true);
+      }
       try {
         const response = await fetch("/api/content/videos?post_type=video", {
           headers: token ? { "Authorization": `Bearer ${token}` } : {}
@@ -163,6 +171,7 @@ export default function ReelsPage() {
             isLiked: item.is_liked || false
           }));
           setReelsList(mapped);
+          globalAppCache.reels = mapped;
         }
       } catch (err) {
         console.error("Lỗi khi tải reels từ API:", err);

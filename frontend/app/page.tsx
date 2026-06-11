@@ -8,6 +8,7 @@ import { FoodPost } from "@/components/food-post";
 import { userProfile } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { globalAppCache } from "@/lib/cache";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -64,18 +65,30 @@ export default function HomePage() {
   const displayUsername = user?.email ? user.email.split('@')[0] : "guest";
   const displayAvatar = user?.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop";
 
-  const [postsList, setPostsList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>([]);
-  const [showModalMenu, setShowModalMenu] = useState(false);
-  const pendingLikes = useRef<Record<string, boolean>>({});
-
   const searchParams = useSearchParams();
   const feedType = searchParams?.get("feed") === "following" ? "following" : "all";
 
+  const [postsList, setPostsList] = useState<any[]>(() => {
+    return feedType === "following" 
+      ? (globalAppCache.followingPosts || []) 
+      : (globalAppCache.posts || []);
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    const hasCache = feedType === "following" ? !!globalAppCache.followingPosts : !!globalAppCache.posts;
+    return !hasCache;
+  });
+  const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>(() => {
+    return globalAppCache.suggestedRestaurants || [];
+  });
+  const [showModalMenu, setShowModalMenu] = useState(false);
+  const pendingLikes = useRef<Record<string, boolean>>({});
+
   useEffect(() => {
     const fetchPosts = async () => {
-      setIsLoading(true);
+      const hasCache = feedType === "following" ? !!globalAppCache.followingPosts : !!globalAppCache.posts;
+      if (!hasCache) {
+        setIsLoading(true);
+      }
       try {
         const url = `/api/content/videos?post_type=image${feedType === "following" ? "&following_only=true" : ""}`;
         const response = await fetch(url, {
@@ -121,6 +134,11 @@ export default function HomePage() {
             isSaved: savedIds.includes(String(item.id))
           }));
           setPostsList(mapped);
+          if (feedType === "following") {
+            globalAppCache.followingPosts = mapped;
+          } else {
+            globalAppCache.posts = mapped;
+          }
         }
       } catch (err) {
         console.error("Lỗi khi tải bài viết từ API:", err);
@@ -147,6 +165,7 @@ export default function HomePage() {
             image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150"
           }));
           setSuggestedRestaurants(mapped);
+          globalAppCache.suggestedRestaurants = mapped;
         }
       } catch (err) {
         console.error("Lỗi khi tải gợi ý quán ăn:", err);

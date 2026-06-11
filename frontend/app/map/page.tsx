@@ -227,7 +227,7 @@ export default function MapPage() {
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-0.5 bg-orange-500/10 px-1.5 py-0.5 rounded text-[9px] font-extrabold text-orange-500 transition-all group-hover:bg-orange-500 group-hover:text-white">
                             <Star className="w-2.5 h-2.5 fill-current" />
-                            <span>{res.rating}</span>
+                            <span>{res.rating_avg}</span>
                           </div>
                           <span className="text-[9px] text-muted-foreground/60 font-semibold">{res.category}</span>
                         </div>
@@ -344,7 +344,7 @@ export default function MapPage() {
                 </div>
                 <div className="flex items-center gap-1 bg-gradient-to-br from-orange-500 to-amber-500 px-2.5 py-1 rounded-xl text-white shadow-md hover:scale-105 transition-all duration-300">
                   <Star className="w-3 h-3 fill-white text-white" />
-                  <span className="font-extrabold text-[10px]">{selectedRestaurant.rating}</span>
+                  <span className="font-extrabold text-[10px]">{selectedRestaurant.rating_avg}</span>
                 </div>
               </div>
               
@@ -371,8 +371,8 @@ export default function MapPage() {
               <div className="flex gap-3 pt-2">
                 <Button 
                   onClick={() => {
-                    if (selectedRestaurant?.lat && selectedRestaurant?.lng) {
-                      const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedRestaurant.lat},${selectedRestaurant.lng}`;
+                    if (selectedRestaurant?.latitude && selectedRestaurant?.longitude) {
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedRestaurant.latitude},${selectedRestaurant.longitude}`;
                       window.open(url, "_blank");
                     }
                   }}

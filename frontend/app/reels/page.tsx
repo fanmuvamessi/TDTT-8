@@ -25,6 +25,7 @@ interface Comment {
   createdAt: string;
   likes: number;
   replies?: Comment[];
+  isLiked?: boolean;
 }
 
 const quickEmojis = ["🤤", "😍", "🔥", "👏", "💯"];

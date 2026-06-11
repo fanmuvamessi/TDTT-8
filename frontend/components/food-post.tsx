@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal, Trash2, EyeOff, Copy } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { CaptionText } from "@/components/caption-text";
+import { LoginRequiredDialog } from "@/components/login-required-dialog";
 
 interface FoodPostProps {
   post: {
@@ -58,17 +59,17 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [isSaved, setIsSaved] = useState(post.isSaved);
+  const [isFollowing, setIsFollowing] = useState(post.user.is_following || false);
+  const [shares, setShares] = useState(post.shares || 0);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   useEffect(() => {
     setIsSaved(post.isSaved);
   }, [post.isSaved]);
 
-  const [isFollowing, setIsFollowing] = useState(post.user.is_following || false);
-
   useEffect(() => {
     setIsFollowing(post.user.is_following || false);
   }, [post.user.is_following]);
-  const [shares, setShares] = useState(post.shares || 0);
   const isLikePending = useRef(false);
 
   useEffect(() => {
@@ -149,50 +150,52 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
 
   const canDelete = user && (user.id === post.reviewerId || user.role === "admin");
 
-  const handleFollow = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleAuthenticatedAction = useCallback((action: () => void) => {
     if (!token) {
-      toast({
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để theo dõi reviewer này.",
-        variant: "destructive"
-      });
+      setShowLoginDialog(true);
       return;
     }
-    if (!post.reviewerId || (user && user.id === post.reviewerId)) return;
+    action();
+  }, [token]);
 
-    const previousFollowing = isFollowing;
-    const nextFollowing = !isFollowing;
-    setIsFollowing(nextFollowing); // Optimistic Update
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleAuthenticatedAction(async () => {
+      if (!post.reviewerId || (user && user.id === post.reviewerId)) return;
 
-    try {
-      const endpoint = `/api/interact/users/${post.reviewerId}/${nextFollowing ? "follow" : "unfollow"}`;
-      const method = nextFollowing ? "POST" : "DELETE";
-      const res = await fetch(endpoint, {
-        method,
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setIsFollowing(data.is_following);
-        if (onFollowToggle) {
-          onFollowToggle(data.is_following);
-        }
-      } else {
-        setIsFollowing(previousFollowing); // Rollback on error
-        const err = await res.json();
-        toast({
-          title: "Thao tác thất bại",
-          description: err.detail || "Không thể thực hiện thao tác này.",
-          variant: "destructive"
+      const previousFollowing = isFollowing;
+      const nextFollowing = !isFollowing;
+      setIsFollowing(nextFollowing); // Optimistic Update
+
+      try {
+        const endpoint = `/api/interact/users/${post.reviewerId}/${nextFollowing ? "follow" : "unfollow"}`;
+        const method = nextFollowing ? "POST" : "DELETE";
+        const res = await fetch(endpoint, {
+          method,
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         });
+        if (res.ok) {
+          const data = await res.json();
+          setIsFollowing(data.is_following);
+          if (onFollowToggle) {
+            onFollowToggle(data.is_following);
+          }
+        } else {
+          setIsFollowing(previousFollowing); // Rollback on error
+          const err = await res.json();
+          toast({
+            title: "Thao tác thất bại",
+            description: err.detail || "Không thể thực hiện thao tác này.",
+            variant: "destructive"
+          });
+        }
+      } catch (err) {
+        setIsFollowing(previousFollowing); // Rollback on network error
+        console.error("Lỗi khi theo dõi:", err);
       }
-    } catch (err) {
-      setIsFollowing(previousFollowing); // Rollback on network error
-      console.error("Lỗi khi theo dõi:", err);
-    }
+    });
   };
 
   const handleDeletePost = async () => {
@@ -223,59 +226,63 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   };
 
   const handleLike = async () => {
-    if (!token || isLikePending.current) return;
-    try {
-      isLikePending.current = true;
-      const nextLiked = !post.isLiked;
-      const nextLikes = nextLiked ? post.likes + 1 : post.likes - 1;
-      
-      // Update parent state instantly for snappy UX!
-      if (onLikeToggle) {
-        onLikeToggle(nextLiked, nextLikes);
-      }
-
-      const res = await fetch(`/api/interact/videos/${post.id}/like`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
+    if (isLikePending.current) return;
+    handleAuthenticatedAction(async () => {
+      try {
+        isLikePending.current = true;
+        const nextLiked = !post.isLiked;
+        const nextLikes = nextLiked ? post.likes + 1 : post.likes - 1;
+        
+        // Update parent state instantly for snappy UX!
         if (onLikeToggle) {
-          onLikeToggle(data.liked, data.likes_count);
+          onLikeToggle(nextLiked, nextLikes);
         }
+
+        const res = await fetch(`/api/interact/videos/${post.id}/like`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (onLikeToggle) {
+            onLikeToggle(data.liked, data.likes_count);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi khi thả tim bài viết:", err);
+      } finally {
+        isLikePending.current = false;
       }
-    } catch (err) {
-      console.error("Lỗi khi thả tim bài viết:", err);
-    } finally {
-      isLikePending.current = false;
-    }
+    });
   };
 
   const handleSave = () => {
-    const nextSaved = !isSaved;
-    setIsSaved(nextSaved);
-    if (typeof window !== "undefined") {
-      let saved = JSON.parse(localStorage.getItem("saved_videos") || "[]");
-      if (nextSaved) {
-        const videoToSave = {
-          id: post.id,
-          title: post.caption || "",
-          thumbnail_url: post.thumbnail || post.image,
-          likes_count: post.likes,
-          post_type: (post.image.endsWith(".mp4") || post.image.includes("video") || post.image.includes("mixkit.co")) ? "video" : "image",
-          video_url: post.image,
-          description: post.caption
-        };
-        if (!saved.some((v: any) => String(v.id) === String(post.id))) {
-          saved.push(videoToSave);
+    handleAuthenticatedAction(() => {
+      const nextSaved = !isSaved;
+      setIsSaved(nextSaved);
+      if (typeof window !== "undefined") {
+        let saved = JSON.parse(localStorage.getItem("saved_videos") || "[]");
+        if (nextSaved) {
+          const videoToSave = {
+            id: post.id,
+            title: post.caption || "",
+            thumbnail_url: post.thumbnail || post.image,
+            likes_count: post.likes,
+            post_type: (post.image.endsWith(".mp4") || post.image.includes("video") || post.image.includes("mixkit.co")) ? "video" : "image",
+            video_url: post.image,
+            description: post.caption
+          };
+          if (!saved.some((v: any) => String(v.id) === String(post.id))) {
+            saved.push(videoToSave);
+          }
+        } else {
+          saved = saved.filter((v: any) => String(v.id) !== String(post.id));
         }
-      } else {
-        saved = saved.filter((v: any) => String(v.id) !== String(post.id));
+        localStorage.setItem("saved_videos", JSON.stringify(saved));
       }
-      localStorage.setItem("saved_videos", JSON.stringify(saved));
-    }
+    });
   };
 
 
@@ -286,7 +293,7 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
     return num.toString();
   };
 
-  return (
+  return (<>
     <div className="rounded-[2.25rem] bg-white/40 dark:bg-neutral-900/10 border border-neutral-200/50 dark:border-neutral-800/40 p-2 shadow-xl shadow-neutral-200/5 dark:shadow-black/20 backdrop-blur-xl mb-6 transition-all duration-500 hover:shadow-2xl hover:border-orange-500/20 group/post">
       <article className="rounded-[calc(2.25rem-8px)] bg-card border border-neutral-100/70 dark:border-neutral-800/60 overflow-hidden transition-all duration-500 shadow-inner">
         {/* Header */}
@@ -486,5 +493,6 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
         </div>
       </article>
     </div>
-  );
+    <LoginRequiredDialog isOpen={showLoginDialog} onClose={() => setShowLoginDialog(false)} />
+  </>);
 }

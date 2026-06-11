@@ -6,7 +6,7 @@ import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal, T
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { CaptionText } from "@/components/caption-text";
@@ -136,12 +136,20 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
 
       if (typeof window !== "undefined") {
         const shareLink = `${window.location.origin}/?post_id=${post.id}`;
-        await navigator.clipboard.writeText(shareLink);
-        toast({
-          title: "Đã sao chép! 🔗",
-          description: "Đã sao chép liên kết chia sẻ bài viết này.",
-          variant: "success"
-        });
+        const copied = await copyToClipboard(shareLink);
+        if (copied) {
+          toast({
+            title: "Đã sao chép! 🔗",
+            description: "Đã sao chép liên kết chia sẻ bài viết này.",
+            variant: "success"
+          });
+        } else {
+          toast({
+            title: "Thao tác thất bại ❌",
+            description: "Không thể tự động sao chép liên kết. Vui lòng sao chép thủ công: " + shareLink,
+            variant: "destructive"
+          });
+        }
       }
     } catch (err) {
       console.error("Lỗi khi chia sẻ:", err);

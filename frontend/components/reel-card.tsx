@@ -6,7 +6,7 @@ import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { LoginRequiredDialog } from "@/components/login-required-dialog";
@@ -201,12 +201,20 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
 
       if (typeof window !== "undefined") {
         const shareLink = `${window.location.origin}/reels?id=${reel.id}`;
-        await navigator.clipboard.writeText(shareLink);
-        toast({
-          title: "Đã sao chép! 🔗",
-          description: "Đã sao chép liên kết chia sẻ của Reel này.",
-          variant: "success"
-        });
+        const copied = await copyToClipboard(shareLink);
+        if (copied) {
+          toast({
+            title: "Đã sao chép! 🔗",
+            description: "Đã sao chép liên kết chia sẻ của Reel này.",
+            variant: "success"
+          });
+        } else {
+          toast({
+            title: "Thao tác thất bại ❌",
+            description: "Không thể tự động sao chép liên kết. Vui lòng sao chép thủ công: " + shareLink,
+            variant: "destructive"
+          });
+        }
       }
     } catch (err) {
       console.error("Lỗi khi sao chép liên kết chia sẻ:", err);

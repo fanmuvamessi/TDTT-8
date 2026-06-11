@@ -7,6 +7,7 @@ import { CategoryFilter } from "@/components/category-filter";
 import { FoodPost } from "@/components/food-post";
 import { userProfile } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -57,6 +58,7 @@ interface Comment {
 
 export default function HomePage() {
   const { user, token } = useAuth();
+  const { toast } = useToast();
   const displayName = user?.full_name || "Khách";
   const displayUsername = user?.email ? user.email.split('@')[0] : "guest";
   const displayAvatar = user?.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop";
@@ -598,7 +600,11 @@ export default function HomePage() {
                       variant="ghost" 
                       onClick={async () => {
                         if (!token) {
-                          alert("Vui lòng đăng nhập để theo dõi reviewer này.");
+                          toast({
+                            title: "Yêu cầu đăng nhập",
+                            description: "Vui lòng đăng nhập để theo dõi reviewer này.",
+                            variant: "destructive"
+                          });
                           return;
                         }
                         const isCurrentlyFollowing = post.user.is_following || false;
@@ -796,7 +802,11 @@ export default function HomePage() {
 
                 const handleFollowDetail = async () => {
                   if (!token) {
-                    alert("Vui lòng đăng nhập để theo dõi reviewer này.");
+                    toast({
+                      title: "Yêu cầu đăng nhập",
+                      description: "Vui lòng đăng nhập để theo dõi reviewer này.",
+                      variant: "destructive"
+                    });
                     return;
                   }
                   if (!activePost.reviewerId || user?.id === activePost.reviewerId) return;
@@ -847,7 +857,11 @@ export default function HomePage() {
                         return p;
                       }));
                       const err = await res.json();
-                      alert(err.detail || "Thao tác thất bại.");
+                      toast({
+                        title: "Thao tác thất bại",
+                        description: err.detail || "Không thể thực hiện thao tác này.",
+                        variant: "destructive"
+                      });
                     }
                   } catch (err) {
                     // Rollback on network error
@@ -1092,7 +1106,11 @@ export default function HomePage() {
                                       return p;
                                     }));
                                     const errData = await response.json();
-                                    alert(errData.detail || "Không thể xóa bình luận.");
+                                    toast({
+                                      title: "Thao tác thất bại",
+                                      description: errData.detail || "Không thể xóa bình luận.",
+                                      variant: "destructive"
+                                    });
                                   }
                                 } catch (err) {
                                   console.error("Lỗi khi xóa bình luận:", err);
@@ -1195,9 +1213,13 @@ export default function HomePage() {
                                           setSelectedPostId(null);
                                           setPostsList(prev => prev.filter(p => p.id !== activePost.id));
                                         } else {
-                                          const errData = await response.json();
-                                          alert(errData.detail || "Không thể xóa bài viết.");
-                                        }
+                                           const errData = await response.json();
+                                           toast({
+                                             title: "Thao tác thất bại",
+                                             description: errData.detail || "Không thể xóa bài viết.",
+                                             variant: "destructive"
+                                           });
+                                         }
                                       } catch (err) {
                                         console.error("Lỗi khi xóa bài viết:", err);
                                       }

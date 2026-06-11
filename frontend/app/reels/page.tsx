@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ReelCard } from "@/components/reel-card";
 import { Home, Camera, MessageCircle, Send, Heart, Smile, Music2, MapPin, X, ChevronRight, Bookmark, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { formatRelativeTime } from "@/lib/time";
 
 interface Comment {
@@ -30,6 +31,8 @@ const quickEmojis = ["🤤", "😍", "🔥", "👏", "💯"];
 
 export default function ReelsPage() {
   const { user, token } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
   const displayName = user?.full_name || "Khách";
   const displayUsername = user?.email ? user.email.split('@')[0] : "guest";
   const displayAvatar = user?.avatar_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop";
@@ -59,7 +62,11 @@ export default function ReelsPage() {
 
   const handleFollowToggleActiveReel = async () => {
     if (!token) {
-      alert("Vui lòng đăng nhập để thực hiện chức năng này.");
+      toast({
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để thực hiện chức năng này.",
+        variant: "destructive"
+      });
       router.push("/login");
       return;
     }
@@ -491,7 +498,11 @@ export default function ReelsPage() {
                         return r;
                       }));
                       const errData = await response.json();
-                      alert(errData.detail || "Không thể xóa bình luận.");
+                      toast({
+                        title: "Thao tác thất bại",
+                        description: errData.detail || "Không thể xóa bình luận.",
+                        variant: "destructive"
+                      });
                     }
                   } catch (err) {
                     console.error("Lỗi khi xóa bình luận:", err);

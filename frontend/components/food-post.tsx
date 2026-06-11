@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { CaptionText } from "@/components/caption-text";
 
 interface FoodPostProps {
@@ -54,6 +55,7 @@ interface FoodPostProps {
 
 export function FoodPost({ post, priority = false, onPostClick, onCommentClick, onLikeToggle, onShareUpdate, onFollowToggle, onDelete }: FoodPostProps) {
   const { token, user } = useAuth();
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [isSaved, setIsSaved] = useState(post.isSaved);
 
@@ -75,7 +77,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
 
   const handleHidePost = async () => {
     if (!token) {
-      alert("Vui lòng đăng nhập để ẩn bài viết.");
+      toast({
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để ẩn bài viết.",
+        variant: "destructive"
+      });
       return;
     }
     if (!confirm("Bạn có chắc chắn muốn ẩn bài viết này không? Nó sẽ không hiển thị trên bảng tin của bạn nữa.")) return;
@@ -88,13 +94,21 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
         }
       });
       if (response.ok) {
-        alert("Đã ẩn bài viết.");
+        toast({
+          title: "Đã ẩn bài viết",
+          description: "Bài viết sẽ không hiển thị trên bảng tin của bạn nữa.",
+          variant: "success"
+        });
         if (onDelete) {
           onDelete(); // Xóa khỏi danh sách local feed
         }
       } else {
         const errData = await response.json();
-        alert(errData.detail || "Không thể ẩn bài viết.");
+        toast({
+          title: "Thao tác thất bại",
+          description: errData.detail || "Không thể ẩn bài viết.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi ẩn bài viết:", err);
@@ -122,7 +136,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
       if (typeof window !== "undefined") {
         const shareLink = `${window.location.origin}/?post_id=${post.id}`;
         await navigator.clipboard.writeText(shareLink);
-        alert("Đã sao chép liên kết chia sẻ! 🔗");
+        toast({
+          title: "Đã sao chép! 🔗",
+          description: "Đã sao chép liên kết chia sẻ bài viết này.",
+          variant: "success"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi chia sẻ:", err);
@@ -134,7 +152,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!token) {
-      alert("Vui lòng đăng nhập để theo dõi reviewer này.");
+      toast({
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để theo dõi reviewer này.",
+        variant: "destructive"
+      });
       return;
     }
     if (!post.reviewerId || (user && user.id === post.reviewerId)) return;
@@ -161,7 +183,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
       } else {
         setIsFollowing(previousFollowing); // Rollback on error
         const err = await res.json();
-        alert(err.detail || "Thao tác thất bại.");
+        toast({
+          title: "Thao tác thất bại",
+          description: err.detail || "Không thể thực hiện thao tác này.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       setIsFollowing(previousFollowing); // Rollback on network error
@@ -185,7 +211,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
         }
       } else {
         const errData = await response.json();
-        alert(errData.detail || "Không thể xóa bài viết.");
+        toast({
+          title: "Thao tác thất bại",
+          description: errData.detail || "Không thể xóa bài viết.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi xóa bài viết:", err);

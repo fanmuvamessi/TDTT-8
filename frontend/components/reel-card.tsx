@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReelCardProps {
   reel: {
@@ -51,6 +52,7 @@ interface ReelCardProps {
 
 export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = false, isMuted, onMuteToggle, onLikeToggle, onShareUpdate, onFollowToggle, onDelete }: ReelCardProps) {
   const { token, user } = useAuth();
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(reel.isLiked || false);
   const [likes, setLikes] = useState(reel.likes);
@@ -126,7 +128,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!token) {
-      alert("Vui lòng đăng nhập để theo dõi reviewer này.");
+      toast({
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để theo dõi reviewer này.",
+        variant: "destructive"
+      });
       return;
     }
     if (!reel.reviewerId || isMe) return;
@@ -151,7 +157,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
       } else {
         setIsFollowing(previousFollowing); // Rollback on error
         const err = await res.json();
-        alert(err.detail || "Không thể theo dõi.");
+        toast({
+          title: "Thao tác thất bại",
+          description: err.detail || "Không thể theo dõi.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       setIsFollowing(previousFollowing); // Rollback on network error
@@ -181,7 +191,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
       if (typeof window !== "undefined") {
         const shareLink = `${window.location.origin}/reels?id=${reel.id}`;
         await navigator.clipboard.writeText(shareLink);
-        alert("Đã sao chép liên kết chia sẻ! 🔗");
+        toast({
+          title: "Đã sao chép! 🔗",
+          description: "Đã sao chép liên kết chia sẻ của Reel này.",
+          variant: "success"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi sao chép liên kết chia sẻ:", err);
@@ -190,7 +204,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
 
   const handleHidePost = async () => {
     if (!token) {
-      alert("Vui lòng đăng nhập để ẩn bài viết.");
+      toast({
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để ẩn bài viết.",
+        variant: "destructive"
+      });
       return;
     }
     if (!confirm("Bạn có chắc chắn muốn ẩn bài viết này không? Nó sẽ không hiển thị trên bảng tin của bạn nữa.")) return;
@@ -203,13 +221,21 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
         }
       });
       if (response.ok) {
-        alert("Đã ẩn bài viết.");
+        toast({
+          title: "Đã ẩn bài viết",
+          description: "Bài viết sẽ không hiển thị trên bảng tin của bạn nữa.",
+          variant: "success"
+        });
         if (onDelete) {
           onDelete(); // Trực tiếp xóa khỏi danh sách local feed
         }
       } else {
         const errData = await response.json();
-        alert(errData.detail || "Không thể ẩn bài viết.");
+        toast({
+          title: "Thao tác thất bại",
+          description: errData.detail || "Không thể ẩn bài viết.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi ẩn bài viết:", err);
@@ -232,7 +258,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
         }
       } else {
         const errData = await response.json();
-        alert(errData.detail || "Không thể xóa reel.");
+        toast({
+          title: "Thao tác thất bại",
+          description: errData.detail || "Không thể xóa reel.",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       console.error("Lỗi khi xóa reel:", err);

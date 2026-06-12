@@ -141,6 +141,20 @@ export async function searchMerchantsGeo(params: SearchMerchantsParams): Promise
   return data.map(mapRawMerchantToRestaurant);
 }
 
+export async function getMerchantById(merchantId: number): Promise<MerchantResponse> {
+  const response = await fetch(`/api/merchant/${merchantId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(errorData.detail || "Failed to fetch merchant.");
+  }
+
+  return response.json();
+}
+
 export async function getMerchantsByOwner(token: string): Promise<MerchantResponse[]> {
   const response = await fetch("/api/merchant/me", {
     method: "GET",
@@ -160,6 +174,45 @@ export async function getMerchantsByOwner(token: string): Promise<MerchantRespon
     return [];
   }
   return data;
+}
+
+export interface MenuLikeResponse {
+  id: number;
+  user_id: number;
+  menu_id: number;
+  created_at: string;
+}
+
+export async function likeMenuItem(token: string, menuId: number): Promise<MenuLikeResponse> {
+  const response = await fetch(`/api/menu/${menuId}/like`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(errorData.detail || "Failed to like menu item.");
+  }
+
+  return response.json();
+}
+
+export async function unlikeMenuItem(token: string, menuId: number): Promise<void> {
+  const response = await fetch(`/api/menu/${menuId}/like`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(errorData.detail || "Failed to unlike menu item.");
+  }
 }
 
 export async function updateMerchant(merchantId: number, token: string, merchantData: MerchantUpdatePayload): Promise<MerchantResponse> {

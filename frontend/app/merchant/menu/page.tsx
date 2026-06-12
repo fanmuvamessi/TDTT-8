@@ -11,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/merchant/page-header";
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, X, Utensils } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, Utensils, Heart } from "lucide-react";
 import Image from "next/image";
+import { useAuth } from "@/hooks/use-auth";
+import { likeMenuItem, unlikeMenuItem } from "@/lib/services/merchant";
+import { useToast } from "@/hooks/use-toast";
 
 interface Dish {
   id: string;
@@ -21,6 +24,8 @@ interface Dish {
   price: number;
   category: string;
   imageUrl: string;
+  likes_count: number;
+  is_liked: boolean;
 }
 
 interface Category {
@@ -36,6 +41,8 @@ const mockDishes: Dish[] = [
     price: 12.99,
     category: "Main Course",
     imageUrl: "https://picsum.photos/seed/burger/80/80",
+    likes_count: 42,
+    is_liked: false,
   },
   {
     id: "2",
@@ -44,6 +51,8 @@ const mockDishes: Dish[] = [
     price: 9.50,
     category: "Appetizer",
     imageUrl: "https://picsum.photos/seed/salad/80/80",
+    likes_count: 18,
+    is_liked: false,
   },
   {
     id: "3",
@@ -52,6 +61,8 @@ const mockDishes: Dish[] = [
     price: 4.00,
     category: "Drinks",
     imageUrl: "https://picsum.photos/seed/juice/80/80",
+    likes_count: 7,
+    is_liked: true,
   },
   {
     id: "4",
@@ -60,6 +71,8 @@ const mockDishes: Dish[] = [
     price: 8.50,
     category: "Desserts",
     imageUrl: "https://picsum.photos/seed/cake/80/80",
+    likes_count: 31,
+    is_liked: false,
   },
 ];
 
@@ -71,6 +84,9 @@ const mockCategories: Category[] = [
 ];
 
 export default function MenuManagementPage() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+
   const [dishes, setDishes] = useState<Dish[]>(mockDishes);
   const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
@@ -78,6 +94,7 @@ export default function MenuManagementPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
 
   const filtered = dishes.filter((d) => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
@@ -106,6 +123,64 @@ export default function MenuManagementPage() {
     setCategories(categories.filter((c) => c.id !== id));
   };
 
+  const handleToggleLike = async (dish: Dish) => {
+    if (!token) {
+      toast({
+        title: "Chưa đăng nhập",
+        description: "Bạn cần đăng nhập để thích món ăn.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (likingIds.has(dish.id)) return;
+
+    setLikingIds((prev) => new Set(prev).add(dish.id));
+
+    setDishes((prev) =>
+      prev.map((d) =>
+        d.id === dish.id
+          ? {
+              ...d,
+              is_liked: !d.is_liked,
+              likes_count: d.is_liked ? d.likes_count - 1 : d.likes_count + 1,
+            }
+          : d
+      )
+    );
+
+    try {
+      if (dish.is_liked) {
+        await unlikeMenuItem(token, Number(dish.id));
+      } else {
+        await likeMenuItem(token, Number(dish.id));
+      }
+    } catch (err: any) {
+      setDishes((prev) =>
+        prev.map((d) =>
+          d.id === dish.id
+            ? {
+                ...d,
+                is_liked: dish.is_liked,
+                likes_count: dish.likes_count,
+              }
+            : d
+        )
+      );
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể cập nhật lượt thích.",
+        variant: "destructive",
+      });
+    } finally {
+      setLikingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(dish.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -129,16 +204,31 @@ export default function MenuManagementPage() {
               <form onSubmit={handleAddEditDish} className="grid gap-4 py-2">
                 <div className="grid gap-2">
                   <Label htmlFor="dishName">Tên món</Label>
-                  <Input id="dishName" defaultValue={editingDish?.name ?? ""} placeholder="Ví dụ: Phở bò đặc biệt" />
+                  <Input
+                    id="dishName"
+                    defaultValue={editingDish?.name ?? ""}
+                    placeholder="Ví dụ: Phở bò đặc biệt"
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="dishDescription">Mô tả</Label>
-                  <Textarea id="dishDescription" defaultValue={editingDish?.description ?? ""} placeholder="Mô tả ngắn về món ăn..." rows={3} />
+                  <Textarea
+                    id="dishDescription"
+                    defaultValue={editingDish?.description ?? ""}
+                    placeholder="Mô tả ngắn về món ăn..."
+                    rows={3}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label htmlFor="dishPrice">Giá (USD)</Label>
-                    <Input id="dishPrice" type="number" step="0.01" defaultValue={editingDish?.price.toString() ?? ""} placeholder="0.00" />
+                    <Input
+                      id="dishPrice"
+                      type="number"
+                      step="0.01"
+                      defaultValue={editingDish?.price.toString() ?? ""}
+                      placeholder="0.00"
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="dishCategory">Danh mục</Label>
@@ -148,7 +238,9 @@ export default function MenuManagementPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((c) => (
-                          <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.name}>
+                            {c.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -156,7 +248,11 @@ export default function MenuManagementPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="dishImage">URL hình ảnh</Label>
-                  <Input id="dishImage" defaultValue={editingDish?.imageUrl ?? ""} placeholder="https://..." />
+                  <Input
+                    id="dishImage"
+                    defaultValue={editingDish?.imageUrl ?? ""}
+                    placeholder="https://..."
+                  />
                 </div>
                 <DialogFooter>
                   <Button type="submit">Lưu món ăn</Button>
@@ -170,7 +266,6 @@ export default function MenuManagementPage() {
       {/* Dishes Card */}
       <Card className="gap-0 py-0">
         <CardHeader className="px-5 pt-5 pb-4 border-b border-border">
-          {/* Toolbar */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -188,7 +283,9 @@ export default function MenuManagementPage() {
               <SelectContent>
                 <SelectItem value="all">Tất cả danh mục</SelectItem>
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -203,7 +300,9 @@ export default function MenuManagementPage() {
               </div>
               <p className="text-sm font-medium text-foreground">Không tìm thấy món ăn</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {search || filterCategory !== "all" ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm" : "Thêm món đầu tiên để bắt đầu"}
+                {search || filterCategory !== "all"
+                  ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
+                  : "Thêm món đầu tiên để bắt đầu"}
               </p>
             </div>
           ) : (
@@ -214,6 +313,7 @@ export default function MenuManagementPage() {
                   <TableHead>Tên món</TableHead>
                   <TableHead className="hidden sm:table-cell">Danh mục</TableHead>
                   <TableHead>Giá</TableHead>
+                  <TableHead className="w-24 text-center">Lượt thích</TableHead>
                   <TableHead className="text-right pr-5">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -233,7 +333,9 @@ export default function MenuManagementPage() {
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-sm text-foreground">{dish.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 hidden md:block">{dish.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 hidden md:block">
+                        {dish.description}
+                      </p>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <Badge variant="secondary" className="text-xs font-medium">
@@ -243,20 +345,45 @@ export default function MenuManagementPage() {
                     <TableCell className="font-medium tabular-nums text-sm">
                       ${dish.price.toFixed(2)}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLike(dish)}
+                          disabled={likingIds.has(dish.id)}
+                          className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold transition-all duration-150 ${
+                            dish.is_liked
+                              ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
+                              : "bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          title={dish.is_liked ? "Bỏ thích" : "Thích món này"}
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 transition-all duration-150 ${
+                              dish.is_liked ? "fill-rose-500 text-rose-500 scale-110" : ""
+                            }`}
+                          />
+                          <span className="tabular-nums">{dish.likes_count}</span>
+                        </button>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right pr-5">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={() => { setEditingDish(dish); setIsDishDialogOpen(true); }}
+                          size="icon"
+                          className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingDish(dish);
+                            setIsDishDialogOpen(true);
+                          }}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          size="icon"
+                          className="w-7 h-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                           onClick={() => handleDeleteDish(dish.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

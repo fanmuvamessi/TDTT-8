@@ -11,8 +11,9 @@ import { PageHeader } from "@/components/merchant/page-header";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { getMerchantsByOwner, updateMerchant, MerchantResponse, MerchantUpdatePayload } from "@/lib/services/merchant";
-import { UploadCloud, X, MapPin, Loader2 } from "lucide-react";
+import { getMerchantsByOwner, updateMerchant, createMerchant, deleteMerchant, MerchantResponse, MerchantUpdatePayload } from "@/lib/services/merchant";
+import { UploadCloud, X, MapPin, Loader2, Plus, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -109,9 +110,12 @@ export default function MerchantProfilePage() {
   const { token, user } = useAuth();
   const { toast } = useToast();
 
+  const [merchantsList, setMerchantsList] = useState<MerchantResponse[]>([]);
   const [merchant, setMerchant] = useState<MerchantResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form states
@@ -126,41 +130,132 @@ export default function MerchantProfilePage() {
   const [phone, setPhone] = useState(""); // Assuming phone will be added to backend later
   const [email, setEmail] = useState(""); // Assuming email will be added to backend later
 
-  useEffect(() => {
-    const fetchMerchantData = async () => {
-      if (!token || !user) {
-        setError("Authentication required.");
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const userMerchants = await getMerchantsByOwner(token);
-        if (userMerchants.length > 0) {
-          const firstMerchant = userMerchants[0]; // Assuming one merchant for simplicity
-          setMerchant(firstMerchant);
-          setName(firstMerchant.name);
-          setAddress(firstMerchant.address || "");
-          setCategory(firstMerchant.category || "");
-          setDescription(firstMerchant.description || "");
-          setLatitude(firstMerchant.latitude.toString());
-          setLongitude(firstMerchant.longitude.toString());
-          // For fields not directly in MerchantResponse, leave as default or set from another source if available
-          // setSlogan(firstMerchant.slogan || "");
-          // setHours(firstMerchant.hours || "");
-          // setPhone(firstMerchant.phone || "");
-          // setEmail(firstMerchant.email || "");
-        } else {
-          setError("No merchant found for this user.");
-        }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch merchant data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Add Restaurant Dialog Form states
+  const [newMerchantName, setNewMerchantName] = useState("");
+  const [newMerchantAddress, setNewMerchantAddress] = useState("");
+  const [newMerchantCategory, setNewMerchantCategory] = useState("");
+  const [newMerchantLatitude, setNewMerchantLatitude] = useState("");
+  const [newMerchantLongitude, setNewMerchantLongitude] = useState("");
+  const [newMerchantDescription, setNewMerchantDescription] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    fetchMerchantData();
+  const fetchMerchants = async (selectId?: number) => {
+    if (!token || !user) {
+      setError("Authentication required.");
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const list = await getMerchantsByOwner(token);
+      setMerchantsList(list);
+      if (list.length > 0) {
+        // If selectId is specified and exists, select it; otherwise select the first one
+        const active = (selectId && list.find(m => m.id === selectId)) || list[0];
+        setSelectedMerchant(active);
+        setError(null);
+      } else {
+        setMerchant(null);
+        setError("No merchant found for this user.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch merchant data.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setSelectedMerchant = (m: MerchantResponse) => {
+    setMerchant(m);
+    setName(m.name);
+    setAddress(m.address || "");
+    setCategory(m.category || "");
+    setDescription(m.description || "");
+    setLatitude(m.location ? m.location.lat.toString() : (m.latitude?.toString() || ""));
+    setLongitude(m.location ? m.location.lng.toString() : (m.longitude?.toString() || ""));
+  };
+
+  useEffect(() => {
+    fetchMerchants();
   }, [token, user]);
+
+  const handleAddMerchant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+
+    if (!newMerchantName.trim() || !newMerchantAddress.trim() || !newMerchantCategory.trim()) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng điền các trường bắt buộc (*)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const created = await createMerchant(token, {
+        name: newMerchantName,
+        address: newMerchantAddress,
+        category: newMerchantCategory,
+        latitude: parseFloat(newMerchantLatitude) || 10.762,
+        longitude: parseFloat(newMerchantLongitude) || 106.682,
+        description: newMerchantDescription,
+      });
+
+      toast({
+        title: "Thành công! 🎉",
+        description: `Đã thêm quán ăn '${created.name}'`,
+      });
+
+      // Reset add form fields
+      setNewMerchantName("");
+      setNewMerchantAddress("");
+      setNewMerchantCategory("");
+      setNewMerchantLatitude("");
+      setNewMerchantLongitude("");
+      setNewMerchantDescription("");
+      setIsAddDialogOpen(false);
+
+      // Reload list and select the new one
+      setIsLoading(true);
+      await fetchMerchants(created.id);
+    } catch (err: any) {
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể thêm quán ăn mới.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleDeleteMerchant = async () => {
+    if (!token || !merchant) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteMerchant(merchant.id, token);
+      toast({
+        title: "Thành công 🎉",
+        description: `Đã xóa quán ăn '${merchant.name}'`,
+      });
+      setIsDeleteDialogOpen(false);
+
+      // Reload list
+      setIsLoading(true);
+      await fetchMerchants();
+    } catch (err: any) {
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể xóa quán ăn.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSubmit = async (tab: string) => {
     if (!token || !merchant) {
@@ -217,6 +312,7 @@ export default function MerchantProfilePage() {
     try {
       const updated = await updateMerchant(merchant.id, token, payload);
       setMerchant(updated);
+      setMerchantsList(prev => prev.map(m => m.id === updated.id ? updated : m));
       toast({
         title: "Thành công! 🎉",
         description: successMessage,
@@ -244,10 +340,72 @@ export default function MerchantProfilePage() {
     );
   }
 
-  if (error) {
-    if (error === "No merchant found for this user.") {
-      return (
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-3xl bg-secondary/10 max-w-lg mx-auto my-12">
+  if (error && error !== "No merchant found for this user.") {
+    return <div className="min-h-screen flex items-center justify-center text-red-500">Lỗi: {error}</div>;
+  }
+
+  if (!merchant) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <PageHeader
+            title="Restaurant Profile"
+            description="Quản lý thông tin và hình ảnh nhà hàng"
+            className="flex-1"
+          />
+          <div className="flex flex-wrap items-center gap-3 bg-secondary/30 border border-border/40 p-2.5 rounded-full px-4 shrink-0 shadow-xs">
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-full gap-1.5 h-9 bg-background border-orange-500/20 text-orange-500 hover:bg-orange-500/10 hover:text-orange-600 font-bold text-xs">
+                  <Plus className="w-3.5 h-3.5" /> Đăng ký quán mới
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[480px] rounded-3xl">
+                <DialogHeader>
+                  <DialogTitle className="font-extrabold text-lg">Đăng ký quán ăn mới</DialogTitle>
+                  <DialogDescription className="text-xs">Nhập thông tin quán ăn mới vào hệ thống.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddMerchant} className="space-y-4 py-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_name" className="text-xs font-bold">Tên quán <span className="text-destructive">*</span></Label>
+                    <Input id="new_name" value={newMerchantName} onChange={(e) => setNewMerchantName(e.target.value)} required placeholder="Ví dụ: Bún Chả Hương Liên" className="rounded-xl" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_category" className="text-xs font-bold">Danh mục ẩm thực <span className="text-destructive">*</span></Label>
+                    <Input id="new_category" placeholder="Ví dụ: Món Việt, Cafe, Trà sữa..." value={newMerchantCategory} onChange={(e) => setNewMerchantCategory(e.target.value)} required className="rounded-xl" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_address" className="text-xs font-bold">Địa chỉ <span className="text-destructive">*</span></Label>
+                    <Input id="new_address" value={newMerchantAddress} onChange={(e) => setNewMerchantAddress(e.target.value)} required placeholder="Ví dụ: 24 Lê Văn Hưu, Quận Hai Bà Trưng, Hà Nội" className="rounded-xl" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="new_lat" className="text-xs font-bold">Vĩ độ (Latitude)</Label>
+                      <Input id="new_lat" placeholder="21.0194" value={newMerchantLatitude} onChange={(e) => setNewMerchantLatitude(e.target.value)} className="rounded-xl" />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="new_lng" className="text-xs font-bold">Kinh độ (Longitude)</Label>
+                      <Input id="new_lng" placeholder="105.8540" value={newMerchantLongitude} onChange={(e) => setNewMerchantLongitude(e.target.value)} className="rounded-xl" />
+                    </div>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_desc" className="text-xs font-bold">Mô tả quán ăn</Label>
+                    <Textarea id="new_desc" rows={3} value={newMerchantDescription} onChange={(e) => setNewMerchantDescription(e.target.value)} placeholder="Mô tả qua về không gian hoặc món đặc trưng..." className="rounded-xl" />
+                  </div>
+                  <DialogFooter className="pt-4 flex items-center justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsAddDialogOpen(false)} className="rounded-full text-xs font-bold">Hủy</Button>
+                    <Button type="submit" disabled={isAdding} className="rounded-full text-xs font-bold gap-2">
+                      {isAdding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Xác nhận thêm
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-3xl bg-secondary/10 max-w-lg mx-auto my-12 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <MapPin className="w-8 h-8 text-primary animate-pulse" />
           </div>
@@ -255,42 +413,128 @@ export default function MerchantProfilePage() {
           <p className="text-sm text-muted-foreground mt-1 mb-6">
             Hồ sơ nhà hàng chưa sẵn sàng. Vui lòng đăng ký thông tin quán ăn mới để kích hoạt các cài đặt profile.
           </p>
-          <Link href="/merchant/add-restaurant">
-            <Button size="lg" className="rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-shadow">
-              Đăng ký quán ăn ngay
-            </Button>
-          </Link>
-        </div>
-      );
-    }
-    return <div className="min-h-screen flex items-center justify-center text-red-500">Lỗi: {error}</div>;
-  }
-
-  if (!merchant) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-3xl bg-secondary/10 max-w-lg mx-auto my-12">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <MapPin className="w-8 h-8 text-primary" />
-        </div>
-        <p className="text-lg font-bold text-foreground">Bạn chưa đăng ký quán ăn nào</p>
-        <p className="text-sm text-muted-foreground mt-1 mb-6">
-          Vui lòng đăng ký quán ăn mới để thiết lập hồ sơ nhà hàng.
-        </p>
-        <Link href="/merchant/add-restaurant">
-          <Button size="lg" className="rounded-full px-6 font-bold">
-            Đăng ký quán ăn
+          <Button size="lg" onClick={() => setIsAddDialogOpen(true)} className="rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-shadow">
+            Đăng ký quán ăn ngay
           </Button>
-        </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Restaurant Profile"
-        description="Quản lý thông tin và hình ảnh nhà hàng"
-      />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <PageHeader
+          title="Restaurant Profile"
+          description="Quản lý thông tin và hình ảnh nhà hàng"
+          className="flex-1"
+        />
+
+        {/* Dropdown to select active restaurant, Add new, and Delete current */}
+        <div className="flex flex-wrap items-center gap-3 bg-secondary/30 border border-border/40 p-2.5 rounded-full px-4 shrink-0 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground shrink-0 pl-1">Chọn quán:</span>
+            <Select
+              value={merchant ? merchant.id.toString() : ""}
+              onValueChange={(val) => {
+                const matched = merchantsList.find(m => m.id.toString() === val);
+                if (matched) setSelectedMerchant(matched);
+              }}
+            >
+              <SelectTrigger className="w-[180px] h-9 rounded-full bg-background border-border/60 text-xs font-bold">
+                <SelectValue placeholder="Chọn quán" />
+              </SelectTrigger>
+              <SelectContent>
+                {merchantsList.map(m => (
+                  <SelectItem key={m.id} value={m.id.toString()}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-1.5 border-l border-border/60 pl-2">
+            {/* Add Restaurant Dialog */}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-full gap-1.5 h-9 bg-background border-orange-500/20 text-orange-500 hover:bg-orange-500/10 hover:text-orange-600 font-bold text-xs">
+                  <Plus className="w-3.5 h-3.5" /> Thêm quán
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[480px] rounded-3xl">
+                <DialogHeader>
+                  <DialogTitle className="font-extrabold text-lg">Đăng ký quán ăn mới</DialogTitle>
+                  <DialogDescription className="text-xs">Nhập thông tin quán ăn mới vào hệ thống.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddMerchant} className="space-y-4 py-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_name" className="text-xs font-bold">Tên quán <span className="text-destructive">*</span></Label>
+                    <Input id="new_name" value={newMerchantName} onChange={(e) => setNewMerchantName(e.target.value)} required placeholder="Ví dụ: Bún Chả Hương Liên" className="rounded-xl" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_category" className="text-xs font-bold">Danh mục ẩm thực <span className="text-destructive">*</span></Label>
+                    <Input id="new_category" placeholder="Ví dụ: Món Việt, Cafe, Trà sữa..." value={newMerchantCategory} onChange={(e) => setNewMerchantCategory(e.target.value)} required className="rounded-xl" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_address" className="text-xs font-bold">Địa chỉ <span className="text-destructive">*</span></Label>
+                    <Input id="new_address" value={newMerchantAddress} onChange={(e) => setNewMerchantAddress(e.target.value)} required placeholder="Ví dụ: 24 Lê Văn Hưu, Quận Hai Bà Trưng, Hà Nội" className="rounded-xl" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="new_lat" className="text-xs font-bold">Vĩ độ (Latitude)</Label>
+                      <Input id="new_lat" placeholder="21.0194" value={newMerchantLatitude} onChange={(e) => setNewMerchantLatitude(e.target.value)} className="rounded-xl" />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="new_lng" className="text-xs font-bold">Kinh độ (Longitude)</Label>
+                      <Input id="new_lng" placeholder="105.8540" value={newMerchantLongitude} onChange={(e) => setNewMerchantLongitude(e.target.value)} className="rounded-xl" />
+                    </div>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new_desc" className="text-xs font-bold">Mô tả quán ăn</Label>
+                    <Textarea id="new_desc" rows={3} value={newMerchantDescription} onChange={(e) => setNewMerchantDescription(e.target.value)} placeholder="Mô tả qua về không gian hoặc món đặc trưng..." className="rounded-xl" />
+                  </div>
+                  <DialogFooter className="pt-4 flex items-center justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsAddDialogOpen(false)} className="rounded-full text-xs font-bold">Hủy</Button>
+                    <Button type="submit" disabled={isAdding} className="rounded-full text-xs font-bold gap-2">
+                      {isAdding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Xác nhận thêm
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete current merchant */}
+            {merchant && (
+              <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5 h-9 font-bold text-xs px-3">
+                    <Trash2 className="w-3.5 h-3.5" /> Xóa quán
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-3xl max-w-[450px]">
+                  <DialogHeader>
+                    <DialogTitle className="font-extrabold text-lg text-destructive">Xác nhận xóa quán ăn?</DialogTitle>
+                    <DialogDescription className="text-xs leading-relaxed mt-2">
+                      Bạn có chắc muốn xóa quán ăn <strong>{merchant.name}</strong> không?
+                      <br />
+                      Mọi thực đơn, khuyến mãi và dữ liệu liên quan sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu. Hành động này không thể phục hồi!
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="pt-4 flex justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsDeleteDialogOpen(false)} className="rounded-full text-xs font-bold">Bỏ qua</Button>
+                    <Button type="button" variant="destructive" disabled={isDeleting} onClick={handleDeleteMerchant} className="rounded-full text-xs font-bold gap-2">
+                      {isDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Đồng ý xóa
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+      </div>
 
       <Tabs defaultValue="general">
         <TabsList className="grid w-full grid-cols-4">

@@ -124,3 +124,7 @@ def respond_to_review(db: Session, db_video: Video, response_text: str):
     db.commit()
     db.refresh(db_video)
     return db_video
+
+def delete_merchant(db: Session, db_merchant: Merchant):
+    db.delete(db_merchant)
+    db.commit()

@@ -17,7 +17,27 @@ export interface MerchantUpdatePayload {
   is_active?: boolean;
 }
 
+export interface LocationCoordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface MerchantResponse {
+  id: number;
+  name: string;
+  address: string;
+  category: string;
+  latitude?: number;
+  longitude?: number;
+  location?: LocationCoordinates;
+  description: string | null;
+  rating_avg: number;
+  owner_id: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Restaurant {
   id: number;
   name: string;
   address: string;
@@ -29,57 +49,24 @@ export interface MerchantResponse {
   owner_id: number;
   is_active: boolean;
   created_at: string;
-}
-
-export interface Restaurant {
-  id: number; // Changed from string to number as per backend `id = Column(Integer, ...)`
-  name: string;
-  address: string;
-  category: string;
-  latitude: number; // Changed from lat
-  longitude: number; // Changed from lng
-  description: string | null; // Added
-  rating_avg: number; // Changed from rating
-  owner_id: number; // Added
-  is_active: boolean; // Added
-  created_at: string; // Added
-
-  // UI-specific fields that mapRawMerchantToRestaurant will fill
-  reviews: number;
-  isOpen: boolean;
-  openTime: string;
-  priceRange: string;
-  image: string;
+  image?: string;
   distance?: number;
 }
 
 /**
  * Maps a raw backend merchant response item to a UI-friendly Restaurant object.
- * Isolates the fallback and default values (like default images and rating) completely.
+ * Only uses real data from the backend — no fake images or mock values.
  */
 export function mapRawMerchantToRestaurant(item: any): Restaurant {
-  // Isolate fallback default values as requested by the user
-  const fallbackRating = item.rating_avg !== undefined && item.rating_avg !== null ? item.rating_avg : 4.5;
-  
-  // Isolated mock generator helpers - separated from UI logic
-  const mockReviews = Math.floor(Math.random() * 200) + 10;
-  const mockImage = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500";
-  const mockOpenTime = "08:00 - 22:00";
-  const mockPriceRange = "30k - 100k";
-
   return {
     id: Number(item.id),
     name: item.name,
     address: item.address || "",
-    category: item.category || "Món ăn",
-    latitude: item.latitude,
-    longitude: item.longitude,
-    rating_avg: fallbackRating,
-    reviews: mockReviews,
-    isOpen: true,
-    openTime: mockOpenTime,
-    priceRange: mockPriceRange,
-    image: mockImage,
+    category: item.category || "",
+    latitude: item.location ? item.location.lat : item.latitude,
+    longitude: item.location ? item.location.lng : item.longitude,
+    rating_avg: item.rating_avg ?? 0,
+    image: item.image_url || undefined,
     distance: item.distance,
     description: item.description || null,
     owner_id: item.owner_id,
@@ -89,7 +76,7 @@ export function mapRawMerchantToRestaurant(item: any): Restaurant {
 }
 
 export async function createMerchant(token: string, merchantData: MerchantCreatePayload): Promise<MerchantResponse> {
-  const response = await fetch("/api/merchant/", {
+  const response = await fetch("/api/merchant", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -180,7 +167,7 @@ export async function updateMerchant(merchantId: number, token: string, merchant
   return response.json();
 }
 
-export async function getMerchant(id: number): Promise<MerchantResponse & { menus: any[] }> {
+export async function getMerchant(id: number): Promise<MerchantResponse & { menus: any[]; reviews?: ReviewResponse[]; campaigns?: CampaignResponse[] }> {
   const response = await fetch(`/api/merchant/${id}`, {
     method: "GET",
     headers: {
@@ -430,6 +417,23 @@ export async function respondToReview(
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.detail || "Failed to respond to review.");
+  }
+
+  return response.json();
+}
+
+export async function deleteMerchant(merchantId: number, token: string): Promise<any> {
+  const response = await fetch(`/api/merchant/${merchantId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Lỗi khi xóa quán ăn.");
   }
 
   return response.json();

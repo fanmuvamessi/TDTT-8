@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { MapPin, Star, Clock, X, Search, ChevronRight, ChevronLeft, Home, Navigation } from "lucide-react";
+import { MapPin, Star, X, Search, ChevronRight, ChevronLeft, Home, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryFilter } from "@/components/category-filter";
 import { cn } from "@/lib/utils";
@@ -205,17 +205,23 @@ export default function MapPage() {
                         : "border-border/40 hover:border-orange-500/20 hover:bg-card/90 hover:scale-101"
                     )}
                   >
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-border/30 shadow-xs">
-                      <Image
-                        src={res.image}
-                        alt={res.name}
-                        fill
-                        sizes="56px"
-                        className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108"
-                        priority={index < 3}
-                        loading={index < 3 ? "eager" : "lazy"}
-                      />
-                    </div>
+                    {res.image ? (
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-border/30 shadow-xs">
+                        <Image
+                          src={res.image}
+                          alt={res.name}
+                          fill
+                          sizes="56px"
+                          className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108"
+                          priority={index < 3}
+                          loading={index < 3 ? "eager" : "lazy"}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl flex-shrink-0 border border-border/30 shadow-xs bg-secondary/50 flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-muted-foreground/40" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                       <div>
                         <h4 className="font-extrabold text-xs text-foreground group-hover:text-orange-500 transition-colors duration-300 truncate">
@@ -229,14 +235,12 @@ export default function MapPage() {
                             <Star className="w-2.5 h-2.5 fill-current" />
                             <span>{res.rating_avg}</span>
                           </div>
-                          <span className="text-[9px] text-muted-foreground/60 font-semibold">{res.category}</span>
+                        <span className="text-[9px] text-muted-foreground/60 font-semibold">{res.category}</span>
                         </div>
-                        {res.distance !== undefined ? (
+                        {res.distance !== undefined && (
                           <span className="text-[9px] text-orange-500 font-bold bg-orange-500/5 px-1.5 py-0.5 rounded-full">
                             {res.distance.toFixed(1)} km
                           </span>
-                        ) : (
-                          <span className="text-[9px] text-muted-foreground/75 font-bold">{res.priceRange}</span>
                         )}
                       </div>
                     </div>
@@ -321,26 +325,37 @@ export default function MapPage() {
         >
           {/* INNER CORE (Double-Bezel Architecture) */}
           <div className="w-full rounded-[calc(2rem-6px)] bg-card/85 dark:bg-card/55 overflow-hidden border border-white/5 shadow-inner">
-            <div className="relative h-28 lg:h-32 group/image">
-              <Image
-                src={selectedRestaurant.image}
-                alt={selectedRestaurant.name}
-                fill
-                className="object-cover transition-transform duration-700 ease-out group-hover/image:scale-105"
-              />
-              <button
-                onClick={() => handleSelectRestaurant(null)}
-                className="absolute top-3 right-3 w-7 h-7 bg-card/75 hover:bg-orange-500 hover:text-white backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-md"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {selectedRestaurant.image ? (
+              <div className="relative h-28 lg:h-32 group/image">
+                <Image
+                  src={selectedRestaurant.image}
+                  alt={selectedRestaurant.name}
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover/image:scale-105"
+                />
+                <button
+                  onClick={() => handleSelectRestaurant(null)}
+                  className="absolute top-3 right-3 w-7 h-7 bg-card/75 hover:bg-orange-500 hover:text-white backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-md"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-end p-3">
+                <button
+                  onClick={() => handleSelectRestaurant(null)}
+                  className="w-7 h-7 bg-card/75 hover:bg-orange-500 hover:text-white backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-md"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             
             <div className="p-4 space-y-4 bg-gradient-to-b from-card to-card/90">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <h3 className="font-extrabold text-sm text-foreground leading-snug tracking-tight">{selectedRestaurant.name}</h3>
-                  <p className="text-[11px] text-muted-foreground font-medium">{selectedRestaurant.category} • {selectedRestaurant.priceRange}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">{selectedRestaurant.category}{selectedRestaurant.address ? ` • ${selectedRestaurant.address}` : ''}</p>
                 </div>
                 <div className="flex items-center gap-1 bg-orange-500/10 dark:bg-orange-500/20 px-2.5 py-0.5 rounded-full text-orange-500 shrink-0 border border-orange-500/20">
                   <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
@@ -352,18 +367,6 @@ export default function MapPage() {
                 <div className="flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-orange-500/70 shrink-0" />
                   <span className="truncate text-muted-foreground font-medium">{selectedRestaurant.address}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-orange-500/70 shrink-0" />
-                  <span className="text-muted-foreground font-medium">{selectedRestaurant.openTime}</span>
-                  <span className={cn(
-                    "ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold border leading-none tracking-wide",
-                    selectedRestaurant.isOpen 
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/10" 
-                      : "bg-rose-500/10 text-rose-500 border-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/10"
-                  )}>
-                    {selectedRestaurant.isOpen ? "Đang mở cửa" : "Đã đóng cửa"}
-                  </span>
                 </div>
               </div>
 

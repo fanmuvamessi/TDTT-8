@@ -37,7 +37,7 @@ export default function MerchantDashboardOverviewPage() {
 
   const [merchant, setMerchant] = useState<MerchantResponse | null>(null);
   const [stats, setStats] = useState<MerchantStats | null>(null);
-  const [dishes, setDishes] = useState<{ name: string; likes: number }[]>([]);
+  const [dishes, setDishes] = useState<{ name: string; price: number; isAvailable: boolean }[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,24 +63,23 @@ export default function MerchantDashboardOverviewPage() {
 
           const mappedDishes = (detailsData.menus || []).map((m: any) => ({
             name: m.dish_name,
-            likes: Math.round(150 + (m.id * 17) % 250)
-          })).sort((a: any, b: any) => b.likes - a.likes);
+            price: m.price,
+            isAvailable: m.is_available ?? true
+          }));
           setDishes(mappedDishes);
 
           const generatedNotifs = [];
-          const reviewers = ["Trần Văn Đức", "Nguyễn Thị Hoa", "Lê Thanh Ngân", "Hoàng Anh Tuấn"];
-          if (statsData.total_reviews > 0) {
-            for (let i = 0; i < Math.min(statsData.total_reviews, 3); i++) {
-              const reviewer = reviewers[i % reviewers.length];
-              const stars = 5 - (i % 2);
+          const realReviews = detailsData.reviews || [];
+          if (realReviews.length > 0) {
+            realReviews.slice(0, 4).forEach((rev: any, idx: number) => {
               generatedNotifs.push({
-                id: `notif-rev-${i}`,
+                id: `notif-rev-${rev.id}`,
                 type: "review",
-                message: `${reviewer} để lại đánh giá ${stars} sao mới về nhà hàng của bạn`,
-                time: `${(i + 1) * 2} giờ trước`,
-                unread: i === 0
+                message: `${rev.customerName || "Khách hàng"} để lại đánh giá ${rev.rating} sao về nhà hàng: "${rev.comment}"`,
+                time: rev.date ? new Date(rev.date).toLocaleDateString("vi-VN") : "Vừa xong",
+                unread: idx === 0
               });
-            }
+            });
           }
           if (statsData.active_promos > 0) {
             generatedNotifs.push({
@@ -145,8 +144,6 @@ export default function MerchantDashboardOverviewPage() {
     );
   }
 
-  const maxLikes = dishes.length > 0 ? dishes[0].likes : 100;
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -164,7 +161,6 @@ export default function MerchantDashboardOverviewPage() {
           icon={Star}
           iconClassName="bg-amber-500/10 text-amber-500"
           description={`${stats ? stats.total_reviews : 0} đánh giá`}
-          trend={{ value: "+0.2 tháng này", direction: "up" }}
         />
         <StatCard
           label="Total Reviews"
@@ -172,14 +168,13 @@ export default function MerchantDashboardOverviewPage() {
           icon={MessageSquare}
           iconClassName="bg-blue-500/10 text-blue-500"
           description="Từ khách hàng"
-          trend={{ value: "+8 tuần này", direction: "up" }}
         />
         <StatCard
-          label="Top Dish Likes"
-          value={dishes.length > 0 ? maxLikes : 0}
+          label="Menu Items"
+          value={dishes.length}
           icon={Utensils}
           iconClassName="bg-primary/10 text-primary"
-          description={dishes.length > 0 ? dishes[0].name : "Chưa có món ăn"}
+          description="Món ăn trong thực đơn"
         />
         <StatCard
           label="Active Promos"
@@ -196,7 +191,7 @@ export default function MerchantDashboardOverviewPage() {
         <Card className="md:col-span-2 gap-0 py-0">
           <CardHeader className="px-5 pt-5 pb-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold">Món ăn phổ biến</CardTitle>
+              <CardTitle className="text-sm font-semibold">Danh sách món ăn</CardTitle>
               <Link href="/merchant/menu">
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1 h-7 px-2">
                   Xem menu <ChevronRight className="w-3 h-3" />
@@ -207,26 +202,25 @@ export default function MerchantDashboardOverviewPage() {
           <CardContent className="px-5 py-4 space-y-4">
             {dishes.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">
-                Thực đơn của bạn đang trống. Hãy thêm món mới để xem thống kê.
+                Thực đơn của bạn đang trống. Hãy thêm món mới.
               </div>
             ) : (
               dishes.slice(0, 4).map((dish, i) => (
-                <div key={dish.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-muted-foreground/60 w-4 tabular-nums">
-                        {i + 1}
-                      </span>
-                      <span className="font-medium text-foreground">{dish.name}</span>
-                    </div>
-                    <span className="text-xs font-bold tabular-nums text-muted-foreground">
-                      {dish.likes} thích
+                <div key={dish.name} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-bold text-muted-foreground/60 w-4 tabular-nums">
+                      {i + 1}
                     </span>
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{dish.name}</p>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 mt-0.5 font-medium">
+                        {dish.isAvailable ? "Còn món" : "Tạm dừng"}
+                      </Badge>
+                    </div>
                   </div>
-                  <Progress
-                    value={(dish.likes / maxLikes) * 100}
-                    className="h-1.5"
-                  />
+                  <span className="text-sm font-bold text-primary tabular-nums">
+                    {dish.price.toLocaleString('vi-VN')}đ
+                  </span>
                 </div>
               ))
             )}

@@ -162,7 +162,7 @@ export default function HomePage() {
             address: item.address,
             category: item.category,
             rating: item.rating_avg,
-            image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150"
+            image: item.image_url || undefined
           }));
           setSuggestedRestaurants(mapped);
           globalAppCache.suggestedRestaurants = mapped;
@@ -565,8 +565,10 @@ export default function HomePage() {
                   <div className="p-2.5 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 flex gap-3 shadow-inner">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border/20 shadow-xs">
                       <Avatar className="w-12 h-12 rounded-xl">
-                        <AvatarImage src={res.image} alt={res.name} className="object-cover transition-transform duration-500 group-hover:scale-108" />
-                        <AvatarFallback>{res.name[0]}</AvatarFallback>
+                        {res.image ? (
+                          <AvatarImage src={res.image} alt={res.name} className="object-cover transition-transform duration-500 group-hover:scale-108" />
+                        ) : null}
+                        <AvatarFallback className="rounded-xl bg-orange-500/10 text-orange-500 font-bold text-sm">{res.name?.[0] || '?'}</AvatarFallback>
                       </Avatar>
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">

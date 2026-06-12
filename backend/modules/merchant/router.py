@@ -8,7 +8,7 @@ from . import schemas, services
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.MerchantResponse, summary="Tạo quán ăn mới")
+@router.post("", response_model=schemas.MerchantResponse, summary="Tạo quán ăn mới")
 def create_merchant_endpoint(
     merchant: schemas.MerchantCreate, 
     db: Session = Depends(get_db),
@@ -275,3 +275,21 @@ def respond_to_review_endpoint(
         raise HTTPException(status_code=404, detail="Review not found for this merchant")
     updated_video = services.respond_to_review(db, db_video, payload.response)
     return schemas.ReviewResponse.from_orm_custom(updated_video)
+
+@router.delete("/{merchant_id}", summary="Xóa quán ăn")
+def delete_merchant_endpoint(
+    merchant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["merchant", "admin"]))
+):
+    """
+    Xóa một quán ăn của chủ quán hiện tại hoặc bởi Admin.
+    """
+    merchant = services.get_merchant(db, merchant_id)
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    if merchant.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ chủ quán hoặc admin mới có quyền xóa quán ăn")
+    
+    services.delete_merchant(db, merchant)
+    return {"message": "Merchant deleted successfully"}

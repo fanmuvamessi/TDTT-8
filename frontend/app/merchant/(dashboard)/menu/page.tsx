@@ -113,9 +113,9 @@ export default function MenuManagementPage() {
             id: String(m.id),
             name: m.dish_name,
             price: m.price,
-            description: "Món ăn ngon miệng được làm từ nguyên liệu tươi mới mỗi ngày.",
-            category: "Main Course",
-            imageUrl: `https://picsum.photos/seed/dish-${m.id}/80/80`,
+            description: "",
+            category: "Món ăn",
+            imageUrl: "",
             is_available: m.is_available ?? true
           }));
           setDishes(mappedDishes);
@@ -207,9 +207,9 @@ export default function MenuManagementPage() {
           id: String(newItem.id),
           name: newItem.dish_name,
           price: newItem.price,
-          description: "Món ăn ngon miệng được làm từ nguyên liệu tươi mới mỗi ngày.",
-          category: "Main Course",
-          imageUrl: `https://picsum.photos/seed/dish-${newItem.id}/80/80`,
+          description: "",
+          category: "Món ăn",
+          imageUrl: "",
           is_available: newItem.is_available ?? true,
         };
 
@@ -316,7 +316,7 @@ export default function MenuManagementPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label htmlFor="dishPrice">Giá (VND)</Label>
-                    <Input id="dishPrice" type="number" step="1" defaultValue={editingDish?.price.toString() ?? ""} placeholder="30000" />
+                    <Input id="dishPrice" type="number" step="1" defaultValue={editingDish?.price?.toString() ?? ""} placeholder="30000" />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="dishCategory">Danh mục</Label>
@@ -412,15 +412,21 @@ export default function MenuManagementPage() {
                 {filtered.map((dish) => (
                   <TableRow key={dish.id} className="group">
                     <TableCell className="pl-5">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0 relative">
-                        <Image
-                          src={dish.imageUrl}
-                          alt={dish.name}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      {dish.imageUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0 relative">
+                          <Image
+                            src={dish.imageUrl}
+                            alt={dish.name}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0 border border-border/10">
+                          <Utensils className="w-5 h-5 text-muted-foreground/60" />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-sm text-foreground">{dish.name}</p>

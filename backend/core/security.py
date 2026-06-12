@@ -1,6 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -26,6 +26,7 @@ if not firebase_admin._apps:
         print("[FIREBASE] Vui lòng cấu hình biến môi trường hoặc file config để sử dụng chế độ chính thức.")
 
 def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
     db: Session = Depends(get_db)
 ) -> User:
@@ -34,6 +35,8 @@ def get_current_user(
     Chỉ cho phép truy cập nếu Token hợp lệ và khớp với cấu hình Firebase.
     Tự động đồng bộ (auto-provision) thông tin người dùng vào DB local nếu là lần đầu tiên đăng nhập.
     """
+    print("[SECURITY DEBUG] Headers:", dict(request.headers))
+    print("[SECURITY DEBUG] Credentials:", credentials)
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

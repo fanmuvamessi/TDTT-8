@@ -62,6 +62,41 @@ try:
 except Exception:
     pass
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN rating INTEGER DEFAULT 5 NOT NULL"))
+        print("[MIGRATION] Đã tự động thêm cột rating vào bảng videos.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE videos ADD COLUMN merchant_response TEXT"))
+        print("[MIGRATION] Đã tự động thêm cột merchant_response vào bảng videos.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE campaigns ADD COLUMN description TEXT"))
+        print("[MIGRATION] Đã tự động thêm cột description vào bảng campaigns.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE campaigns ADD COLUMN start_date TIMESTAMP"))
+        print("[MIGRATION] Đã tự động thêm cột start_date vào bảng campaigns.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE campaigns ADD COLUMN end_date TIMESTAMP"))
+        print("[MIGRATION] Đã tự động thêm cột end_date vào bảng campaigns.")
+except Exception:
+    pass
+
 app = FastAPI(
     title="Food Review API",
     description="Hệ thống Backend MVP cho mạng xã hội & Đánh giá ẩm thực Food Review",

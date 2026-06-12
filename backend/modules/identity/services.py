@@ -68,7 +68,7 @@ def register_user(db: Session, data: RegisterRequest) -> User:
         email=email,
         full_name=full_name,
         avatar_url=data.avatar_url,
-        role="reviewer",
+        role=data.role or "reviewer",
         meta_data={"phone_number": data.phone_number} if data.phone_number else None
     )
 
@@ -115,7 +115,18 @@ def login_user(db: Session, data: LoginRequest) -> dict:
             detail="Tài khoản không tồn tại."
         )
 
-    # 2. Kiểm tra cấu hình Firebase Web API Key
+    # 2. Kiểm tra cấu hình Firebase Web API Key hoặc chế độ phát triển (Mock)
+    if settings.ENV == "development":
+        # Cho phép đăng nhập bằng tài khoản nội bộ bằng mật khẩu "password" hoặc "admin123"
+        if data.password in ("password", "admin123"):
+            mock_token = f"mock_token_{db_user.firebase_uid}"
+            print(f"[IDENTITY] [DEV MOCK] Đăng nhập thành công tài khoản mock: {username}")
+            return {
+                "access_token": mock_token,
+                "refresh_token": "mock_refresh_token",
+                "user": db_user
+            }
+
     api_key = settings.FIREBASE_WEB_API_KEY
     
     if not api_key:

@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { name: "Dashboard", href: "/merchant", icon: Home },
@@ -36,6 +37,7 @@ interface SidebarProps {
 
 function NavigationContent({ onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/merchant") return pathname === "/merchant";
@@ -106,7 +108,10 @@ function NavigationContent({ onClose }: SidebarProps) {
             size="icon-sm"
             className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             title="Logout"
-            onClick={onClose}
+            onClick={() => {
+              logout();
+              if (onClose) onClose();
+            }}
           >
             <LogOut className="w-3.5 h-3.5" />
           </Button>

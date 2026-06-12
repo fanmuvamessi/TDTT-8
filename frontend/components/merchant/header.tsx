@@ -4,6 +4,7 @@ import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileSidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
 const restaurantName = "Delicious Bites";
 
 export function Header() {
+  const { logout } = useAuth();
   return (
     <div className="flex items-center justify-between w-full gap-4">
       {/* Mobile: hamburger + name */}
@@ -49,7 +51,12 @@ export function Header() {
         <ThemeToggle compact />
 
         {/* Logout */}
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={logout}
+        >
           <LogOut className="w-4 h-4" />
         </Button>
       </div>
@@ -61,7 +68,12 @@ export function Header() {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
         </Button>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={logout}
+        >
           <LogOut className="w-4 h-4" />
         </Button>
       </div>

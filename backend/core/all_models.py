@@ -93,6 +93,8 @@ class Video(Base):
     likes_count = Column(Integer, default=0, nullable=False)
     shares_count = Column(Integer, default=0, nullable=False)
     comments_count = Column(Integer, default=0, nullable=False)
+    rating = Column(Integer, default=5, nullable=False)
+    merchant_response = Column(Text, nullable=True)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     tagged_merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True, index=True)
     reup_from_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True) # ID bài viết gốc nếu là reup
@@ -166,11 +168,14 @@ class Campaign(Base):
     id = Column(Integer, primary_key=True, index=True)
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
     video_url = Column(String, nullable=False)
     thumbnail_url = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     impressions_count = Column(Integer, default=0, nullable=False)
     clicks_count = Column(Integer, default=0, nullable=False)
+    start_date = Column(DateTime, default=datetime.utcnow, nullable=True)
+    end_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

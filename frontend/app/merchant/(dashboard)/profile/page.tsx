@@ -245,11 +245,44 @@ export default function MerchantProfilePage() {
   }
 
   if (error) {
+    if (error === "No merchant found for this user.") {
+      return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-3xl bg-secondary/10 max-w-lg mx-auto my-12">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <MapPin className="w-8 h-8 text-primary animate-pulse" />
+          </div>
+          <p className="text-lg font-bold text-foreground">Bạn chưa đăng ký quán ăn nào</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-6">
+            Hồ sơ nhà hàng chưa sẵn sàng. Vui lòng đăng ký thông tin quán ăn mới để kích hoạt các cài đặt profile.
+          </p>
+          <Link href="/merchant/add-restaurant">
+            <Button size="lg" className="rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-shadow">
+              Đăng ký quán ăn ngay
+            </Button>
+          </Link>
+        </div>
+      );
+    }
     return <div className="min-h-screen flex items-center justify-center text-red-500">Lỗi: {error}</div>;
   }
 
   if (!merchant) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Không tìm thấy thông tin quán ăn.</div>;
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-3xl bg-secondary/10 max-w-lg mx-auto my-12">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <MapPin className="w-8 h-8 text-primary" />
+        </div>
+        <p className="text-lg font-bold text-foreground">Bạn chưa đăng ký quán ăn nào</p>
+        <p className="text-sm text-muted-foreground mt-1 mb-6">
+          Vui lòng đăng ký quán ăn mới để thiết lập hồ sơ nhà hàng.
+        </p>
+        <Link href="/merchant/add-restaurant">
+          <Button size="lg" className="rounded-full px-6 font-bold">
+            Đăng ký quán ăn
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   return (

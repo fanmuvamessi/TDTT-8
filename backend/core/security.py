@@ -41,6 +41,19 @@ def get_current_user(
         )
     token = credentials.credentials
     
+    # Ở chế độ phát triển, cho phép bỏ qua xác thực Firebase đối với token giả lập (Mock)
+    if settings.ENV == "development" and token.startswith("mock_token_"):
+        uid = token.replace("mock_token_", "")
+        user = db.query(User).filter(User.firebase_uid == uid).first()
+        if not user:
+            user = db.query(User).filter(User.email == uid).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Không tìm thấy tài khoản cho token Mock này."
+            )
+        return user
+
     # Xác thực Firebase ID Token chính thức bằng Firebase Admin SDK
     try:
         decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
@@ -140,6 +153,11 @@ def get_current_user_optional(
     if not credentials or not credentials.credentials:
         return None
     token = credentials.credentials
+    
+    if settings.ENV == "development" and token.startswith("mock_token_"):
+        uid = token.replace("mock_token_", "")
+        return db.query(User).filter(User.firebase_uid == uid).first() or db.query(User).filter(User.email == uid).first()
+
     try:
         decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
         uid = decoded_token.get("uid")

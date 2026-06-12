@@ -10,8 +10,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/merchant/page-header";
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Megaphone } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Pencil, Trash2, Megaphone, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getMerchantsByOwner,
+  getCampaigns,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  MerchantResponse,
+  CampaignResponse
+} from "@/lib/services/merchant";
 
 interface Promotion {
   id: string;
@@ -22,32 +33,14 @@ interface Promotion {
   isActive: boolean;
 }
 
-const mockPromotions: Promotion[] = [
-  {
-    id: "1",
-    title: "Summer Sale",
-    description: "Giảm 20% tất cả món chính.",
-    startDate: "2026-06-01",
-    endDate: "2026-06-30",
-    isActive: true,
-  },
-  {
-    id: "2",
-    title: "Happy Hour",
-    description: "Mua 1 tặng 1 đồ uống từ 15:00 - 17:00.",
-    startDate: "2026-06-01",
-    endDate: "2026-08-31",
-    isActive: false,
-  },
-  {
-    id: "3",
-    title: "Khai trương tháng 5",
-    description: "Giảm 15% cho hóa đơn trên 300.000đ.",
-    startDate: "2026-05-01",
-    endDate: "2026-05-31",
-    isActive: false,
-  },
-];
+const mapCampaignToPromotion = (c: CampaignResponse): Promotion => ({
+  id: String(c.id),
+  title: c.title,
+  description: c.description || "",
+  startDate: c.start_date ? c.start_date.split("T")[0] : c.created_at.split("T")[0],
+  endDate: c.end_date ? c.end_date.split("T")[0] : new Date(new Date(c.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+  isActive: c.is_active
+});
 
 function getPromoStatus(promo: Promotion): { label: string; variant: "default" | "secondary" | "destructive" | "outline" ; className: string } {
   const today = new Date();
@@ -67,14 +60,49 @@ function formatDate(dateStr: string) {
 }
 
 export default function PromotionsManagementPage() {
-  const [promotions, setPromotions] = useState<Promotion[]>(mockPromotions);
+  const { token, user } = useAuth();
+  const { toast } = useToast();
+
+  const [merchant, setMerchant] = useState<MerchantResponse | null>(null);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
   const [formActive, setFormActive] = useState(false);
 
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      if (!token || !user) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const userMerchants = await getMerchantsByOwner(token);
+        if (userMerchants.length > 0) {
+          const activeMerchant = userMerchants[0];
+          setMerchant(activeMerchant);
+          const campaignsList = await getCampaigns(activeMerchant.id, token);
+          setPromotions(campaignsList.map(mapCampaignToPromotion));
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch promotions:", error);
+        toast({
+          title: "Lỗi 🙁",
+          description: error.message || "Không thể tải danh sách khuyến mãi.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPromotions();
+  }, [token, user]);
+
   const handleOpenAdd = () => {
     setEditingPromo(null);
-    setFormActive(false);
+    setFormActive(true);
     setIsDialogOpen(true);
   };
 
@@ -84,14 +112,105 @@ export default function PromotionsManagementPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDialogOpen(false);
+    if (!token || !merchant) return;
+
+    const target = e.target as HTMLFormElement;
+    const title = (target.elements.namedItem("promoTitle") as HTMLInputElement).value;
+    const description = (target.elements.namedItem("promoDescription") as HTMLTextAreaElement).value;
+    const startDate = (target.elements.namedItem("startDate") as HTMLInputElement).value || null;
+    const endDate = (target.elements.namedItem("endDate") as HTMLInputElement).value || null;
+
+    if (!title.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Tiêu đề không được để trống.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (editingPromo) {
+        const updated = await updateCampaign(merchant.id, Number(editingPromo.id), token, {
+          title,
+          description,
+          start_date: startDate,
+          end_date: endDate,
+          is_active: formActive
+        });
+        setPromotions(promotions.map(p => p.id === editingPromo.id ? mapCampaignToPromotion(updated) : p));
+        toast({
+          title: "Thành công 🎉",
+          description: "Đã cập nhật chiến dịch khuyến mãi."
+        });
+      } else {
+        const created = await createCampaign(merchant.id, token, {
+          title,
+          description,
+          start_date: startDate,
+          end_date: endDate,
+          is_active: formActive
+        });
+        setPromotions([mapCampaignToPromotion(created), ...promotions]);
+        toast({
+          title: "Thành công 🎉",
+          description: "Đã tạo chiến dịch khuyến mãi mới."
+        });
+      }
+      setIsDialogOpen(false);
+    } catch (err: any) {
+      toast({
+        title: "Lỗi 🙁",
+        description: err.message || "Không thể lưu chiến dịch.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setPromotions(promotions.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!token || !merchant) return;
+    try {
+      await deleteCampaign(merchant.id, Number(id), token);
+      setPromotions(promotions.filter((p) => p.id !== id));
+      toast({
+        title: "Thành công 🎉",
+        description: "Đã xóa chiến dịch khuyến mãi."
+      });
+    } catch (err: any) {
+      toast({
+        title: "Lỗi 🙁",
+        description: err.message || "Không thể xóa chiến dịch.",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="ml-2 mt-2 text-primary font-medium text-sm animate-pulse">Đang tải danh sách khuyến mãi...</p>
+      </div>
+    );
+  }
+
+  if (!merchant) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Promotions"
+          description="Quản lý các chương trình khuyến mãi và ưu đãi"
+        />
+        <div className="min-h-[40vh] flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-2xl bg-secondary/10">
+          <Megaphone className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-foreground">Bạn chưa đăng ký quán ăn nào</p>
+          <p className="text-xs text-muted-foreground mt-1">Vui lòng đăng ký quán ăn mới để quản lý khuyến mãi.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

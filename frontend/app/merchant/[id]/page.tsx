@@ -20,7 +20,8 @@ import {
   Search, 
   Plus, 
   Minus,
-  Navigation
+  Navigation,
+  Loader2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -31,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/header";
+import { getMerchant } from "@/lib/services/merchant";
 
 // Placeholder data (will be replaced with actual API calls)
 const mockMerchantData = {
@@ -156,16 +158,129 @@ const mockMerchantData = {
   ],
 };
 
+const mapRawMerchantToDetails = (data: any) => {
+  const menus = data.menus || [];
+  const mappedMenus = menus.map((m: any) => {
+    const defaultDishImages = [
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400",
+      "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=400",
+      "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400",
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400",
+    ];
+    const imageIndex = m.id % defaultDishImages.length;
+    const imageUrl = defaultDishImages[imageIndex];
+
+    return {
+      id: String(m.id),
+      name: m.dish_name,
+      price: `${m.price.toLocaleString('vi-VN')}đ`,
+      imageUrl: imageUrl,
+      description: "Món ăn thơm ngon chuẩn vị, chế biến từ nguyên liệu tươi sạch của nhà hàng.",
+      is_available: m.is_available ?? true,
+    };
+  });
+
+  const defaultMerchantImages = [
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600",
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600",
+    "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=1600",
+  ];
+  const coverIndex = data.id % defaultMerchantImages.length;
+  const coverUrl = defaultMerchantImages[coverIndex];
+
+  return {
+    id: String(data.id),
+    name: data.name,
+    lat: data.latitude,
+    lng: data.longitude,
+    slogan: data.description ? (data.description.split('.')[0] + ".") : "Hương vị ẩm thực Việt đích thực.",
+    imageUrl: coverUrl,
+    logoUrl: `https://picsum.photos/seed/logo-${data.id}/150/150`,
+    rating: data.rating_avg || 4.5,
+    reviewCount: 128,
+    category: data.category || "Món ăn",
+    address: data.address || "Chưa cập nhật địa chỉ",
+    phone: "028 123 4567",
+    email: "contact@merchant.com",
+    openingHours: "Thứ 2 - Chủ nhật: 09:00 AM - 10:00 PM",
+    description: data.description || "Nhà hàng luôn mang lại cho thực khách những món ăn ngon miệng nhất.",
+    menuHighlights: mappedMenus.slice(0, 4),
+    fullMenu: mappedMenus.slice(4),
+    galleryImages: [
+      "https://picsum.photos/seed/interior-1/1200/800",
+      "https://picsum.photos/seed/food-1/1200/800",
+      "https://picsum.photos/seed/exterior-1/1200/800",
+    ],
+    reviews: (data.reviews || []).map((r: any) => ({
+      id: String(r.id),
+      user: r.customerName,
+      avatar: r.customerAvatar || undefined,
+      rating: r.rating,
+      comment: r.comment,
+      date: r.date.split("T")[0]
+    })),
+    promotions: (data.campaigns || []).map((c: any) => ({
+      id: String(c.id),
+      title: c.title,
+      description: c.description || "Ưu đãi đặc biệt từ nhà hàng."
+    }))
+  };
+};
+
 export default function MerchantPage() {
   const [isFullMenuOpen, setIsFullMenuOpen] = useState(false);
   const params = useParams();
   const { id } = params as { id: string };
 
-  // In a real application, fetch data based on `id`
-  const merchant = mockMerchantData; // Replace with actual fetch
+  const [merchant, setMerchant] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!merchant) {
-    return <div className="min-h-screen flex items-center justify-center text-xl text-foreground">Không tìm thấy thương nhân.</div>;
+  useEffect(() => {
+    if (!id) return;
+    const fetchMerchantData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getMerchant(Number(id));
+        setMerchant(mapRawMerchantToDetails(data));
+      } catch (err: any) {
+        console.error("Error fetching merchant:", err);
+        setError(err.message || "Không thể tải thông tin quán ăn.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMerchantData();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary animate-pulse" />
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">Đang tải thông tin quán ăn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !merchant) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <Utensils className="w-12 h-12 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-bold text-foreground">Không tìm thấy quán ăn</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-md">
+          {error || "Quán ăn này không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống."}
+        </p>
+        <Link href="/">
+          <Button variant="default" className="rounded-full px-6">
+            Quay lại trang chủ
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -268,70 +383,94 @@ export default function MerchantPage() {
                 Thực đơn
               </Badge>
               <h2 className="text-3xl font-extrabold tracking-tight mb-8">Các món ăn nổi bật</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {merchant.menuHighlights.map((item) => (
-                  <Card key={item.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm">
-                    <div className="p-3.5 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col justify-between h-full">
-                      <div className="flex items-center gap-4 mb-4">
-                        <AspectRatio ratio={4 / 3} className="w-60 h-auto flex-shrink-0 overflow-hidden rounded-xl border border-border/20 shadow-xs">
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </AspectRatio>
-                        <div className="flex-1 space-y-1">
-                          <h3 className="font-extrabold text-base text-foreground">{item.name}</h3>
-                          <p className="font-bold text-lg text-orange-500">{item.price}</p>
+              {merchant.menuHighlights.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-2xl bg-secondary/5 shadow-inner animate-fade-in">
+                  <Utensils className="w-8 h-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-foreground">Thực đơn chưa cập nhật</p>
+                  <p className="text-xs text-muted-foreground mt-1">Quán ăn này hiện chưa thêm món nào vào thực đơn.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {merchant.menuHighlights.map((item: any) => (
+                    <Card key={item.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm relative overflow-hidden group">
+                      {item.is_available === false && (
+                        <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-10">
+                          <Badge variant="secondary" className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground bg-muted/80 shadow-sm">
+                            Tạm ngưng phục vụ
+                          </Badge>
                         </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                        {item.description}
-                      </p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-              <Collapsible open={isFullMenuOpen} onOpenChange={setIsFullMenuOpen} className="w-full">
-                <CollapsibleContent className="CollapsibleContent">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    {merchant.fullMenu.map((item) => (
-                      <Card key={item.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm">
-                        <div className="p-3.5 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col justify-between h-full">
-                          <div className="flex items-center gap-4 mb-4">
-                            <AspectRatio ratio={4 / 3} className="w-60 h-auto flex-shrink-0 overflow-hidden rounded-xl border border-border/20 shadow-xs">
-                              <Image
-                                src={item.imageUrl}
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                              />
-                            </AspectRatio>
-                            <div className="flex-1 space-y-1">
-                              <h3 className="font-extrabold text-base text-foreground">{item.name}</h3>
-                              <p className="font-bold text-lg text-orange-500">{item.price}</p>
-                            </div>
+                      )}
+                      <div className="p-3.5 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col justify-between h-full">
+                        <div className="flex items-center gap-4 mb-4">
+                          <AspectRatio ratio={4 / 3} className="w-60 h-auto flex-shrink-0 overflow-hidden rounded-xl border border-border/20 shadow-xs">
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </AspectRatio>
+                          <div className="flex-1 space-y-1">
+                            <h3 className="font-extrabold text-base text-foreground">{item.name}</h3>
+                            <p className="font-bold text-lg text-orange-500">{item.price}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                            {item.description}
-                          </p>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-                <CollapsibleTrigger asChild>
-                  <div className="text-center mt-12">
-                    <Button variant="outline" className="px-6 py-3 rounded-full text-sm font-bold border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors active:scale-95 group">
-                      {isFullMenuOpen ? "Thu gọn Menu" : "Xem toàn bộ Menu"}
-                      <span className="ml-2 w-7 h-7 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:translate-x-1 group-hover:-translate-y-[1px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-                        {isFullMenuOpen ? <Minus className="w-4 h-4 text-orange-500 group-hover:text-white" /> : <Plus className="w-4 h-4 text-orange-500 group-hover:text-white" />}
-                      </span>
-                    </Button>
-                  </div>
-                </CollapsibleTrigger>
-              </Collapsible>
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                          {item.description}
+                        </p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              {merchant.fullMenu.length > 0 && (
+                <Collapsible open={isFullMenuOpen} onOpenChange={setIsFullMenuOpen} className="w-full">
+                  <CollapsibleContent className="CollapsibleContent">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      {merchant.fullMenu.map((item: any) => (
+                        <Card key={item.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm relative overflow-hidden group">
+                          {item.is_available === false && (
+                            <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-10">
+                              <Badge variant="secondary" className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground bg-muted/80 shadow-sm">
+                                Tạm ngưng phục vụ
+                              </Badge>
+                            </div>
+                          )}
+                          <div className="p-3.5 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col justify-between h-full">
+                            <div className="flex items-center gap-4 mb-4">
+                              <AspectRatio ratio={4 / 3} className="w-60 h-auto flex-shrink-0 overflow-hidden rounded-xl border border-border/20 shadow-xs">
+                                <Image
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </AspectRatio>
+                              <div className="flex-1 space-y-1">
+                                <h3 className="font-extrabold text-base text-foreground">{item.name}</h3>
+                                <p className="font-bold text-lg text-orange-500">{item.price}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                              {item.description}
+                            </p>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                  <CollapsibleTrigger asChild>
+                    <div className="text-center mt-12">
+                      <Button variant="outline" className="px-6 py-3 rounded-full text-sm font-bold border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors active:scale-95 group">
+                        {isFullMenuOpen ? "Thu gọn Menu" : "Xem toàn bộ Menu"}
+                        <span className="ml-2 w-7 h-7 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:translate-x-1 group-hover:-translate-y-[1px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+                          {isFullMenuOpen ? <Minus className="w-4 h-4 text-orange-500 group-hover:text-white" /> : <Plus className="w-4 h-4 text-orange-500 group-hover:text-white" />}
+                        </span>
+                      </Button>
+                    </div>
+                  </CollapsibleTrigger>
+                </Collapsible>
+              )}
             </section>
 
             {/* Gallery / Visuals Section */}
@@ -341,7 +480,7 @@ export default function MerchantPage() {
               </Badge>
               <h2 className="text-3xl font-extrabold tracking-tight mb-8">Không gian và món ăn</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {merchant.galleryImages.map((src, index) => (
+                {merchant.galleryImages.map((src: string, index: number) => (
                   <div key={index} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-xl shadow-md backdrop-blur-sm group overflow-hidden">
                     <AspectRatio ratio={4 / 3} className="rounded-[calc(0.75rem-2px)] overflow-hidden">
                       <Image
@@ -363,7 +502,7 @@ export default function MerchantPage() {
               </Badge>
               <h2 className="text-3xl font-extrabold tracking-tight mb-8">Khách hàng nói gì về chúng tôi</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {merchant.reviews.map((review) => (
+                {merchant.reviews.map((review: any) => (
                   <Card key={review.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm">
                     <div className="p-4 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col h-full">
                       <div className="flex items-center gap-3 mb-4">
@@ -461,7 +600,7 @@ export default function MerchantPage() {
                 </Badge>
                 <h2 className="text-3xl font-extrabold tracking-tight mb-8">Khuyến mãi đặc biệt</h2>
                 <div className="space-y-6">
-                  {merchant.promotions.map((promo) => (
+                  {merchant.promotions.map((promo: any) => (
                     <Card key={promo.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm">
                       <div className="p-4 rounded-[calc(1rem-2px)] bg-primary/5 dark:bg-primary/10 shadow-inner space-y-2">
                         <h3 className="font-extrabold text-sm text-primary flex items-center gap-2">

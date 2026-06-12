@@ -10,8 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/merchant/page-header";
-import { Star, MessageSquare, StarOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Star, MessageSquare, StarOff, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getMerchantsByOwner,
+  getReviews,
+  respondToReview,
+  MerchantResponse,
+  ReviewResponse
+} from "@/lib/services/merchant";
 
 interface Review {
   id: string;
@@ -23,49 +32,15 @@ interface Review {
   response?: string;
 }
 
-const mockReviews: Review[] = [
-  {
-    id: "1",
-    customerName: "Alice Smith",
-    customerAvatar: "https://i.pravatar.cc/40?u=alice",
-    rating: 5,
-    comment: "Absolutely loved the Classic Burger! Best in town.",
-    date: "2026-05-28",
-    response: "Thank you, Alice! We're thrilled you enjoyed it.",
-  },
-  {
-    id: "2",
-    customerName: "Bob Johnson",
-    customerAvatar: "https://i.pravatar.cc/40?u=bob",
-    rating: 4,
-    comment: "Great Caesar Salad, but the croutons were a bit soft.",
-    date: "2026-05-29",
-  },
-  {
-    id: "3",
-    customerName: "Charlie Brown",
-    customerAvatar: "https://i.pravatar.cc/40?u=charlie",
-    rating: 5,
-    comment: "The service was impeccable and the food was fantastic.",
-    date: "2026-05-30",
-  },
-  {
-    id: "4",
-    customerName: "Diana Prince",
-    customerAvatar: "https://i.pravatar.cc/40?u=diana",
-    rating: 3,
-    comment: "Food was okay, but waited a bit too long for the order.",
-    date: "2026-05-31",
-  },
-  {
-    id: "5",
-    customerName: "Evan Wright",
-    customerAvatar: "https://i.pravatar.cc/40?u=evan",
-    rating: 2,
-    comment: "Disappointed with the portion size, expected more for the price.",
-    date: "2026-06-01",
-  },
-];
+const mapBackendReviewToReview = (r: ReviewResponse): Review => ({
+  id: String(r.id),
+  customerName: r.customerName,
+  customerAvatar: r.customerAvatar || undefined,
+  rating: r.rating,
+  comment: r.comment,
+  date: r.date.split("T")[0],
+  response: r.response || undefined
+});
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -85,11 +60,70 @@ function StarRow({ rating }: { rating: number }) {
 }
 
 export default function ReviewsManagementPage() {
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const { token, user } = useAuth();
+  const { toast } = useToast();
+
+  const [merchant, setMerchant] = useState<MerchantResponse | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filterRating, setFilterRating] = useState("all");
   const [sortBy, setSortBy] = useState("dateDesc");
   const [respondingTo, setRespondingTo] = useState<Review | null>(null);
   const [responseText, setResponseText] = useState("");
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!token || !user) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const userMerchants = await getMerchantsByOwner(token);
+        if (userMerchants.length > 0) {
+          const activeMerchant = userMerchants[0];
+          setMerchant(activeMerchant);
+          const reviewsList = await getReviews(activeMerchant.id, token);
+          setReviews(reviewsList.map(mapBackendReviewToReview));
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch reviews:", error);
+        toast({
+          title: "Lỗi 🙁",
+          description: error.message || "Không thể tải danh sách đánh giá.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [token, user]);
+
+  const handleSubmitResponse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !merchant || !respondingTo || !responseText.trim()) return;
+
+    try {
+      const updated = await respondToReview(merchant.id, Number(respondingTo.id), token, responseText.trim());
+      setReviews(reviews.map((r) =>
+        r.id === respondingTo.id ? mapBackendReviewToReview(updated) : r
+      ));
+      toast({
+        title: "Thành công 🎉",
+        description: "Đã gửi phản hồi cho đánh giá."
+      });
+      setRespondingTo(null);
+      setResponseText("");
+    } catch (err: any) {
+      toast({
+        title: "Lỗi 🙁",
+        description: err.message || "Không thể gửi phản hồi.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const filtered = reviews
     .filter((r) => filterRating === "all" || r.rating === parseInt(filterRating))
@@ -101,23 +135,15 @@ export default function ReviewsManagementPage() {
       return 0;
     });
 
-  const avgRating = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+  const avgRating = reviews.length > 0 
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length 
+    : 5.0;
 
-  const ratingCounts = [5, 4, 3, 2, 1].map((star) => ({
-    star,
-    count: reviews.filter((r) => r.rating === star).length,
-    pct: (reviews.filter((r) => r.rating === star).length / reviews.length) * 100,
-  }));
-
-  const handleSubmitResponse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!respondingTo || !responseText.trim()) return;
-    setReviews(reviews.map((r) =>
-      r.id === respondingTo.id ? { ...r, response: responseText.trim() } : r
-    ));
-    setRespondingTo(null);
-    setResponseText("");
-  };
+  const ratingCounts = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviews.filter((r) => r.rating === star).length;
+    const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+    return { star, count, pct };
+  });
 
   return (
     <div className="space-y-6">

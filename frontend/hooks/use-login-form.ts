@@ -107,7 +107,11 @@ export function useLoginForm() {
         description: `Chào mừng ${data.user.full_name || 'bạn'} quay trở lại!`,
       });
 
-      router.push("/");
+      if (data.user?.role === "merchant" || data.user?.role === "admin") {
+        router.push("/merchant");
+      } else {
+        router.push("/");
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
@@ -149,7 +153,11 @@ export function useLoginForm() {
         description: `Chào mừng ${data.user.full_name || 'bạn'} đã tham gia cộng đồng!`,
       });
 
-      router.push("/");
+      if (data.user?.role === "merchant" || data.user?.role === "admin") {
+        router.push("/merchant");
+      } else {
+        router.push("/");
+      }
     } catch (err: any) {
       console.error(err);
       // Hủy bỏ popup Google hoặc đóng popup không được xem là lỗi nghiêm trọng cần cảnh báo to

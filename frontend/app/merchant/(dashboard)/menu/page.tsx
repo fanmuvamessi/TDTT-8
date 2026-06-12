@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,9 +11,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/merchant/page-header";
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, X, Utensils } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Pencil, Trash2, Search, X, Utensils, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  getMerchantsByOwner, 
+  getMerchant, 
+  addMenuItem, 
+  updateMenuItem, 
+  deleteMenuItem,
+  MerchantResponse 
+} from "@/lib/services/merchant";
 
 interface Dish {
   id: string;
@@ -21,6 +32,7 @@ interface Dish {
   price: number;
   category: string;
   imageUrl: string;
+  is_available?: boolean;
 }
 
 interface Category {
@@ -71,13 +83,56 @@ const mockCategories: Category[] = [
 ];
 
 export default function MenuManagementPage() {
-  const [dishes, setDishes] = useState<Dish[]>(mockDishes);
+  const { token, user } = useAuth();
+  const { toast } = useToast();
+
+  const [merchant, setMerchant] = useState<MerchantResponse | null>(null);
+  const [dishes, setDishes] = useState<Dish[]>([]);
   const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMerchantAndMenu = async () => {
+      if (!token || !user) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const userMerchants = await getMerchantsByOwner(token);
+        if (userMerchants.length > 0) {
+          const activeMerchant = userMerchants[0];
+          setMerchant(activeMerchant);
+          const details = await getMerchant(activeMerchant.id);
+          const mappedDishes = (details.menus || []).map((m: any) => ({
+            id: String(m.id),
+            name: m.dish_name,
+            price: m.price,
+            description: "Món ăn ngon miệng được làm từ nguyên liệu tươi mới mỗi ngày.",
+            category: "Main Course",
+            imageUrl: `https://picsum.photos/seed/dish-${m.id}/80/80`,
+            is_available: m.is_available ?? true
+          }));
+          setDishes(mappedDishes);
+        }
+      } catch (error: any) {
+        console.error("Failed to load merchant menu data:", error);
+        toast({
+          title: "Lỗi 🙁",
+          description: error.message || "Không thể tải thực đơn.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMerchantAndMenu();
+  }, [token, user]);
 
   const filtered = dishes.filter((d) => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
@@ -85,13 +140,114 @@ export default function MenuManagementPage() {
     return matchSearch && matchCat;
   });
 
-  const handleAddEditDish = (e: React.FormEvent) => {
+  const handleAddEditDish = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDishDialogOpen(false);
+    if (!token || !merchant) {
+      toast({
+        title: "Lỗi",
+        description: "Bạn chưa đăng nhập hoặc không sở hữu quán ăn nào.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const target = e.target as HTMLFormElement;
+    const dishNameInput = target.elements.namedItem("dishName") as HTMLInputElement;
+    const dishPriceInput = target.elements.namedItem("dishPrice") as HTMLInputElement;
+    const dishAvailableInput = target.elements.namedItem("dishAvailable") as HTMLInputElement;
+
+    const dishName = dishNameInput?.value || "";
+    const dishPriceRaw = dishPriceInput?.value || "";
+    const dishAvailable = dishAvailableInput ? dishAvailableInput.checked : true;
+
+    if (!dishName.trim() || !dishPriceRaw) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng nhập đầy đủ tên và giá món ăn.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const priceVal = Math.round(parseFloat(dishPriceRaw));
+
+    try {
+      if (editingDish) {
+        const updatedItem = await updateMenuItem(merchant.id, Number(editingDish.id), token, {
+          dish_name: dishName,
+          price: priceVal,
+          is_available: dishAvailable,
+        });
+
+        setDishes((prev) =>
+          prev.map((d) =>
+            d.id === editingDish.id
+              ? {
+                  ...d,
+                  name: updatedItem.dish_name,
+                  price: updatedItem.price,
+                  is_available: updatedItem.is_available ?? true,
+                }
+              : d
+          )
+        );
+
+        toast({
+          title: "Thành công 🎉",
+          description: "Đã cập nhật món ăn.",
+        });
+      } else {
+        const newItem = await addMenuItem(merchant.id, token, {
+          dish_name: dishName,
+          price: priceVal,
+          is_available: true,
+        });
+
+        const mappedNewDish: Dish = {
+          id: String(newItem.id),
+          name: newItem.dish_name,
+          price: newItem.price,
+          description: "Món ăn ngon miệng được làm từ nguyên liệu tươi mới mỗi ngày.",
+          category: "Main Course",
+          imageUrl: `https://picsum.photos/seed/dish-${newItem.id}/80/80`,
+          is_available: newItem.is_available ?? true,
+        };
+
+        setDishes((prev) => [...prev, mappedNewDish]);
+
+        toast({
+          title: "Thành công 🎉",
+          description: "Đã thêm món mới vào thực đơn.",
+        });
+      }
+      setIsDishDialogOpen(false);
+    } catch (error: any) {
+      console.error("Failed to save menu item:", error);
+      toast({
+        title: "Lỗi 🙁",
+        description: error.message || "Không thể lưu món ăn.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteDish = (id: string) => {
-    setDishes(dishes.filter((d) => d.id !== id));
+  const handleDeleteDish = async (id: string) => {
+    if (!token || !merchant) return;
+    try {
+      await deleteMenuItem(merchant.id, Number(id), token);
+      setDishes((prev) => prev.filter((d) => d.id !== id));
+      toast({
+        title: "Thành công 🎉",
+        description: "Đã xóa món ăn khỏi thực đơn.",
+      });
+    } catch (error: any) {
+      console.error("Failed to delete menu item:", error);
+      toast({
+        title: "Lỗi 🙁",
+        description: error.message || "Không thể xóa món ăn.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -105,6 +261,28 @@ export default function MenuManagementPage() {
   const handleDeleteCategory = (id: string) => {
     setCategories(categories.filter((c) => c.id !== id));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="ml-2 mt-2 text-primary font-medium text-sm animate-pulse">Đang tải thực đơn...</p>
+      </div>
+    );
+  }
+
+  if (!merchant) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-2xl bg-secondary/10">
+        <Utensils className="w-10 h-10 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">Bạn chưa đăng ký quán ăn nào</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-4">Vui lòng đăng ký quán ăn mới để quản lý thực đơn.</p>
+        <Link href="/merchant/add-restaurant">
+          <Button className="rounded-full">Đăng ký quán ăn</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -137,8 +315,8 @@ export default function MenuManagementPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="dishPrice">Giá (USD)</Label>
-                    <Input id="dishPrice" type="number" step="0.01" defaultValue={editingDish?.price.toString() ?? ""} placeholder="0.00" />
+                    <Label htmlFor="dishPrice">Giá (VND)</Label>
+                    <Input id="dishPrice" type="number" step="1" defaultValue={editingDish?.price.toString() ?? ""} placeholder="30000" />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="dishCategory">Danh mục</Label>
@@ -154,6 +332,18 @@ export default function MenuManagementPage() {
                     </Select>
                   </div>
                 </div>
+                {editingDish && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="dishAvailable"
+                      name="dishAvailable"
+                      defaultChecked={editingDish.is_available !== false}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <Label htmlFor="dishAvailable" className="cursor-pointer font-medium">Còn món (Đang bán)</Label>
+                  </div>
+                )}
                 <div className="grid gap-2">
                   <Label htmlFor="dishImage">URL hình ảnh</Label>
                   <Input id="dishImage" defaultValue={editingDish?.imageUrl ?? ""} placeholder="https://..." />
@@ -213,6 +403,7 @@ export default function MenuManagementPage() {
                   <TableHead className="pl-5 w-12"></TableHead>
                   <TableHead>Tên món</TableHead>
                   <TableHead className="hidden sm:table-cell">Danh mục</TableHead>
+                  <TableHead className="hidden md:table-cell">Trạng thái</TableHead>
                   <TableHead>Giá</TableHead>
                   <TableHead className="text-right pr-5">Thao tác</TableHead>
                 </TableRow>
@@ -221,7 +412,7 @@ export default function MenuManagementPage() {
                 {filtered.map((dish) => (
                   <TableRow key={dish.id} className="group">
                     <TableCell className="pl-5">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0 relative">
                         <Image
                           src={dish.imageUrl}
                           alt={dish.name}
@@ -240,8 +431,19 @@ export default function MenuManagementPage() {
                         {dish.category}
                       </Badge>
                     </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {dish.is_available !== false ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/10 text-xs font-medium">
+                          Còn món
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs font-medium text-muted-foreground">
+                          Tạm hết
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium tabular-nums text-sm">
-                      ${dish.price.toFixed(2)}
+                      {dish.price.toLocaleString('vi-VN')}đ
                     </TableCell>
                     <TableCell className="text-right pr-5">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

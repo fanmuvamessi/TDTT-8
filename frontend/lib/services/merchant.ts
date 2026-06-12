@@ -179,3 +179,258 @@ export async function updateMerchant(merchantId: number, token: string, merchant
 
   return response.json();
 }
+
+export async function getMerchant(id: number): Promise<MerchantResponse & { menus: any[] }> {
+  const response = await fetch(`/api/merchant/${id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to fetch merchant details.");
+  }
+
+  return response.json();
+}
+
+export async function addMenuItem(
+  merchantId: number,
+  token: string,
+  itemData: { dish_name: string; price: number; is_available?: boolean }
+): Promise<any> {
+  const response = await fetch(`/api/merchant/${merchantId}/menus`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(itemData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to add menu item.");
+  }
+
+  return response.json();
+}
+
+export async function updateMenuItem(
+  merchantId: number,
+  menuId: number,
+  token: string,
+  itemData: { dish_name?: string; price?: number; is_available?: boolean }
+): Promise<any> {
+  const response = await fetch(`/api/merchant/${merchantId}/menus/${menuId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(itemData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to update menu item.");
+  }
+
+  return response.json();
+}
+
+export async function deleteMenuItem(
+  merchantId: number,
+  menuId: number,
+  token: string
+): Promise<any> {
+  const response = await fetch(`/api/merchant/${merchantId}/menus/${menuId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to delete menu item.");
+  }
+
+  return response.json();
+}
+
+export interface MerchantStats {
+  total_clicks: number;
+  total_ad_impressions: number;
+  rating_avg: number;
+  total_reviews: number;
+  active_promos: number;
+}
+
+export async function getMerchantStats(merchantId: number, token: string): Promise<MerchantStats> {
+  const response = await fetch(`/api/merchant/${merchantId}/stats`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to fetch merchant statistics.");
+  }
+
+  return response.json();
+}
+
+export interface CampaignResponse {
+  id: number;
+  merchant_id: number;
+  title: string;
+  description: string | null;
+  video_url: string;
+  thumbnail_url: string | null;
+  is_active: boolean;
+  impressions_count: number;
+  clicks_count: number;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+}
+
+export interface ReviewResponse {
+  id: number;
+  customerName: string;
+  customerAvatar: string | null;
+  rating: number;
+  comment: string;
+  date: string;
+  response: string | null;
+}
+
+export async function getCampaigns(merchantId: number, token: string): Promise<CampaignResponse[]> {
+  const response = await fetch(`/api/merchant/${merchantId}/campaigns`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to fetch campaigns.");
+  }
+
+  return response.json();
+}
+
+export async function createCampaign(
+  merchantId: number,
+  token: string,
+  payload: { title: string; description?: string; video_url?: string; is_active?: boolean; start_date?: string | null; end_date?: string | null }
+): Promise<CampaignResponse> {
+  const response = await fetch(`/api/merchant/${merchantId}/campaigns`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to create campaign.");
+  }
+
+  return response.json();
+}
+
+export async function updateCampaign(
+  merchantId: number,
+  campaignId: number,
+  token: string,
+  payload: { title?: string; description?: string; video_url?: string; is_active?: boolean; start_date?: string | null; end_date?: string | null }
+): Promise<CampaignResponse> {
+  const response = await fetch(`/api/merchant/${merchantId}/campaigns/${campaignId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to update campaign.");
+  }
+
+  return response.json();
+}
+
+export async function deleteCampaign(
+  merchantId: number,
+  campaignId: number,
+  token: string
+): Promise<any> {
+  const response = await fetch(`/api/merchant/${merchantId}/campaigns/${campaignId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to delete campaign.");
+  }
+
+  return response.json();
+}
+
+export async function getReviews(merchantId: number, token: string): Promise<ReviewResponse[]> {
+  const response = await fetch(`/api/merchant/${merchantId}/reviews`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to fetch reviews.");
+  }
+
+  return response.json();
+}
+
+export async function respondToReview(
+  merchantId: number,
+  reviewId: number,
+  token: string,
+  responseText: string
+): Promise<ReviewResponse> {
+  const response = await fetch(`/api/merchant/${merchantId}/reviews/${reviewId}/response`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ response: responseText }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to respond to review.");
+  }
+
+  return response.json();
+}

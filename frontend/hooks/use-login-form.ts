@@ -111,7 +111,7 @@ export function useLoginForm() {
         description: `Chào mừng ${data.user.full_name || 'bạn'} quay trở lại!`,
       });
 
-      if (data.user?.role === "merchant" || data.user?.role === "admin") {
+      if (loginRole === "merchant" && (data.user?.role === "merchant" || data.user?.role === "admin")) {
         router.push("/merchant");
       } else {
         router.push("/");
@@ -161,7 +161,7 @@ export function useLoginForm() {
         description: `Chào mừng ${data.user.full_name || 'bạn'} đã tham gia cộng đồng!`,
       });
 
-      if (data.user?.role === "merchant" || data.user?.role === "admin") {
+      if (loginRole === "merchant" && (data.user?.role === "merchant" || data.user?.role === "admin")) {
         router.push("/merchant");
       } else {
         router.push("/");

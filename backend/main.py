@@ -114,17 +114,19 @@ app.add_middleware(
 )
 
 # Đăng ký Router tổng dưới prefix chung
-# Khi chạy trên Vercel, Vercel đã rewrite /api/(.*) và loại bỏ prefix /api trong path truyền tới ASGI.
-# Do đó ta sử dụng prefix rỗng trên Vercel và prefix "/api" ở local.
-import os
-prefix = "" if os.environ.get("VERCEL") else settings.API_V1_STR
+# Backend luôn sử dụng prefix /api để đồng nhất giữa môi trường Local và Vercel.
+prefix = settings.API_V1_STR
 
 app.include_router(api_router, prefix=prefix)
 
-@app.get(prefix or "/", tags=["General"])
+# Đăng ký các route root hỗ trợ cả dạng có prefix /api và không có prefix
+@app.get("/", tags=["General"])
+@app.get(f"{prefix}", tags=["General"])
 def read_root():
     return {"message": f"Welcome to {settings.PROJECT_NAME}"}
 
-@app.get(f"{prefix}/health" if prefix else "/health", tags=["General"])
+# Đăng ký các route health check hỗ trợ cả dạng có prefix /api và không có prefix
+@app.get("/health", tags=["General"])
+@app.get(f"{prefix}/health", tags=["General"])
 def health_check():
     return {"status": "ok", "environment": "Local/Vercel"}

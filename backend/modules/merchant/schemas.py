@@ -82,6 +82,7 @@ class ReviewResponse(BaseModel):
     comment: str
     date: datetime
     response: Optional[str] = None
+    reviewerId: int
 
     @classmethod
     def from_orm_custom(cls, obj):
@@ -93,7 +94,8 @@ class ReviewResponse(BaseModel):
             rating=obj.rating if obj.rating is not None else 5,
             comment=obj.description or "",
             date=obj.created_at,
-            response=obj.merchant_response
+            response=obj.merchant_response,
+            reviewerId=obj.reviewer_id
         )
 
 class ReviewResponsePayload(BaseModel):

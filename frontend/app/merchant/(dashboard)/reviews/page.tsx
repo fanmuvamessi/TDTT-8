@@ -11,13 +11,14 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/merchant/page-header";
 import { useState, useEffect } from "react";
-import { Star, MessageSquare, StarOff, Loader2 } from "lucide-react";
+import { Star, MessageSquare, StarOff, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import {
   getMerchantsByOwner,
   getReviews,
   respondToReview,
+  deleteReview,
   MerchantResponse,
   ReviewResponse
 } from "@/lib/services/merchant";
@@ -70,6 +71,33 @@ export default function ReviewsManagementPage() {
   const [sortBy, setSortBy] = useState("dateDesc");
   const [respondingTo, setRespondingTo] = useState<Review | null>(null);
   const [responseText, setResponseText] = useState("");
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+
+  const handleDeleteReview = async (reviewId: number) => {
+    if (!token || !merchant) return;
+
+    if (!confirm("Bạn có chắc chắn muốn xóa đánh giá này không?")) {
+      return;
+    }
+
+    setIsDeletingId(reviewId);
+    try {
+      await deleteReview(reviewId, token);
+      setReviews(reviews.filter((r) => Number(r.id) !== reviewId));
+      toast({
+        title: "Thành công 🎉",
+        description: "Đã xóa đánh giá thành công."
+      });
+    } catch (err: any) {
+      toast({
+        title: "Lỗi 🙁",
+        description: err.message || "Không thể xóa đánh giá.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -222,76 +250,89 @@ export default function ReviewsManagementPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="px-0 py-0">
+        <CardContent className="p-6 bg-secondary/5 border-t border-border/20">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
                 <StarOff className="w-5 h-5 text-muted-foreground" />
               </div>
               <p className="text-sm font-medium text-foreground">Không có đánh giá nào</p>
-              <p className="text-xs text-muted-foreground mt-1">Thử thay đổi bộ lọc</p>
+              <p className="text-xs text-muted-foreground mt-1">Thử thay đổi bộ lọc hoặc đợi đánh giá từ khách hàng.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="pl-5">Khách hàng</TableHead>
-                  <TableHead>Đánh giá</TableHead>
-                  <TableHead className="hidden lg:table-cell">Nhận xét</TableHead>
-                  <TableHead className="hidden md:table-cell">Ngày</TableHead>
-                  <TableHead className="text-right pr-5">Phản hồi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((review) => (
-                  <TableRow key={review.id} className="group align-top">
-                    <TableCell className="pl-5 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="w-8 h-8 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filtered.map((review) => (
+                <Card key={review.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-md transition-all duration-300 hover:shadow-lg hover:border-primary/25 group flex flex-col justify-between">
+                  <div className="p-4 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col flex-1 h-full">
+                    {/* Header: Avatar, Name, Stars, Date */}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10 ring-2 ring-primary/10">
                           <AvatarImage src={review.customerAvatar} alt={review.customerName} />
                           <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
                             {review.customerName[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium text-foreground whitespace-nowrap">
-                          {review.customerName}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <StarRow rating={review.rating} />
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell py-4 max-w-xs">
-                      <p className="text-sm text-foreground line-clamp-2">{review.comment}</p>
-                      {review.response && (
-                        <div className="mt-2 px-3 py-2 bg-muted rounded-lg border-l-2 border-primary/30">
-                          <p className="text-xs text-muted-foreground italic line-clamp-2">
-                            Phản hồi: {review.response}
-                          </p>
+                        <div>
+                          <h3 className="font-extrabold text-sm text-foreground">{review.customerName}</h3>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <StarRow rating={review.rating} />
+                            <span className="text-[10px] text-muted-foreground font-semibold">
+                              {new Date(review.date).toLocaleDateString("vi-VN")}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell py-4 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                      {new Date(review.date).toLocaleDateString("vi-VN")}
-                    </TableCell>
-                    <TableCell className="text-right pr-5 py-4">
+                      </div>
+                    </div>
+
+                    {/* Body: Comment text */}
+                    <p className="text-sm leading-relaxed text-foreground/90 italic flex-grow mb-4 bg-secondary/10 dark:bg-neutral-800/10 p-3.5 rounded-xl border border-border/20">
+                      "{review.comment}"
+                    </p>
+
+                    {/* Owner's response bubble if exists */}
+                    {review.response ? (
+                      <div className="mb-4 p-3.5 bg-primary/5 rounded-xl border border-primary/10 space-y-1.5 relative group/response animate-in fade-in duration-200">
+                        <p className="text-[10px] font-extrabold text-primary uppercase tracking-wider">Phản hồi của bạn:</p>
+                        <p className="text-xs text-foreground/90 leading-relaxed italic">"{review.response}"</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic mb-4">Chưa có phản hồi từ cửa hàng</p>
+                    )}
+
+                    {/* Action footer */}
+                    <div className="flex justify-between items-center pt-2 border-t border-border/20">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                        className="rounded-full text-xs font-bold text-destructive hover:bg-destructive/10 hover:text-destructive px-3 gap-1.5 cursor-pointer h-8"
+                        onClick={() => handleDeleteReview(Number(review.id))}
+                        disabled={isDeletingId === Number(review.id)}
+                      >
+                        {isDeletingId === Number(review.id) ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                        Xóa đánh giá
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full text-xs font-bold border-primary/20 text-primary hover:bg-primary/5 px-4 gap-1.5 cursor-pointer h-8"
                         onClick={() => {
                           setRespondingTo(review);
                           setResponseText(review.response ?? "");
                         }}
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
-                        {review.response ? "Sửa" : "Phản hồi"}
+                        {review.response ? "Sửa phản hồi" : "Viết phản hồi"}
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

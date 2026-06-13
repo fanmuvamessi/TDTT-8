@@ -24,6 +24,7 @@ interface ReelCardProps {
     restaurant: {
       name: string;
       address: string;
+      ownerId?: number;
     };
     video: string;
     thumbnail?: string;
@@ -133,7 +134,7 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
     });
   };
 
-  const canDelete = user && (user.id === reel.reviewerId || user.role === "admin");
+  const canDelete = user && (user.id === reel.reviewerId || user.id === reel.restaurant.ownerId || user.role === "admin");
   const isMe = user && user.id === reel.reviewerId;
 
   const handleFollow = async (e: React.MouseEvent) => {

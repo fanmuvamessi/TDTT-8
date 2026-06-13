@@ -81,7 +81,7 @@ def generate_presigned_upload_url(file_name: str, content_type: str, folder: str
 
 def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
     """
-    Lưu thông tin siêu dữ liệu (Metadata) của Video vào PostgreSQL.
+    Lưu thông tin siêu dữ liệu (Metadata) của Video / Review vào PostgreSQL.
     """
     # Xử lý chuẩn hóa tagged_merchant_id: nếu là 0 hoặc bé hơn, coi như không gắn thẻ (None)
     tagged_merchant_id = video_in.tagged_merchant_id
@@ -89,6 +89,7 @@ def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
         tagged_merchant_id = None
 
     # Xác minh nhà hàng được gắn thẻ nếu có
+    merchant = None
     if tagged_merchant_id is not None:
         merchant = db.query(Merchant).filter(Merchant.id == tagged_merchant_id).first()
         if not merchant:
@@ -97,6 +98,8 @@ def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
                 detail="Nhà hàng/Cửa hàng được gắn thẻ không tồn tại trong hệ thống."
             )
             
+    is_review = video_in.post_type == "review" or video_in.post_type == "text"
+    
     db_video = Video(
         title=video_in.title,
         video_url=video_in.video_url,
@@ -105,19 +108,33 @@ def create_video(db: Session, video_in: VideoCreate, reviewer_id: int) -> Video:
         reviewer_id=reviewer_id,
         tagged_merchant_id=tagged_merchant_id,
         post_type=video_in.post_type or "video",
-        status="pending"  # Mặc định chờ kiểm duyệt
+        rating=video_in.rating if video_in.rating is not None else 5,
+        status="approved" if is_review else "pending"  # Tự động duyệt đối với đánh giá bằng chữ
     )
     
     try:
         db.add(db_video)
         db.commit()
         db.refresh(db_video)
+        
+        # Cập nhật điểm rating_avg cho Merchant dựa trên tất cả bài đánh giá của merchant này
+        if tagged_merchant_id is not None and merchant is not None:
+            ratings = db.query(Video.rating).filter(
+                Video.tagged_merchant_id == tagged_merchant_id,
+                Video.rating.isnot(None)
+            ).all()
+            if ratings:
+                avg_rating = sum(r[0] for r in ratings) / len(ratings)
+                merchant.rating_avg = round(avg_rating, 1)
+                db.commit()
+                db.refresh(merchant)
+                
         return db_video
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi hệ thống khi lưu trữ thông tin video: {str(e)}"
+            detail=f"Lỗi hệ thống khi lưu trữ thông tin video/đánh giá: {str(e)}"
         )
 
 def reup_video(db: Session, video_id: int, reviewer_id: int) -> Video:
@@ -320,20 +337,28 @@ def delete_video(db: Session, video_id: int, current_user) -> dict:
     """
     Xóa video review (bài viết) cùng toàn bộ dữ liệu liên quan (likes, comments, R2 files).
     """
-    # 1. Tìm video
-    video = db.query(Video).filter(Video.id == video_id).first()
+    # 1. Tìm video cùng thông tin nhà hàng được gắn thẻ
+    video = db.query(Video).options(joinedload(Video.tagged_merchant)).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Bài viết/Video không tồn tại trong hệ thống."
         )
 
-    # 2. Kiểm tra quyền sở hữu (chỉ chính chủ hoặc admin mới được xóa)
-    if video.reviewer_id != current_user.id and current_user.role != "admin":
+    # Kiểm tra xem người dùng hiện tại có phải là chủ sở hữu của nhà hàng được gắn thẻ hay không
+    is_merchant_owner = False
+    if video.tagged_merchant and video.tagged_merchant.owner_id == current_user.id:
+        is_merchant_owner = True
+
+    # 2. Kiểm tra quyền sở hữu (chính chủ review, chủ nhà hàng được tag, hoặc admin)
+    if video.reviewer_id != current_user.id and not is_merchant_owner and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn không có quyền xóa bài viết này."
+            detail="Bạn không có quyền xóa bài viết/đánh giá này."
         )
+
+    tagged_merchant_id = video.tagged_merchant_id
+    merchant = video.tagged_merchant
 
     # 3. Trích xuất key lưu trữ Cloudflare R2 từ video_url và thumbnail_url để xóa file vật lý
     r2_public_url = settings.CLOUDFLARE_R2_PUBLIC_URL
@@ -378,6 +403,20 @@ def delete_video(db: Session, video_id: int, current_user) -> dict:
     # 4. Xóa video khỏi CSDL (Cascade tự động xóa likes, comments, replies, comment_likes)
     db.delete(video)
     db.commit()
+
+    # Cập nhật lại điểm rating_avg cho Merchant dựa trên tất cả bài đánh giá còn lại
+    if tagged_merchant_id is not None and merchant is not None:
+        ratings = db.query(Video.rating).filter(
+            Video.tagged_merchant_id == tagged_merchant_id,
+            Video.rating.isnot(None),
+            Video.id != video_id  # Đảm bảo video hiện tại đã bị loại khỏi tính toán (hoặc đã delete)
+        ).all()
+        if ratings:
+            avg_rating = sum(r[0] for r in ratings) / len(ratings)
+            merchant.rating_avg = round(avg_rating, 1)
+        else:
+            merchant.rating_avg = 0.0
+        db.commit()
 
     return {
         "status": "success",

@@ -153,7 +153,8 @@ export default function ReelsPage() {
             },
             restaurant: {
               name: item.restaurant?.name || "Quán ăn ẩm thực",
-              address: item.restaurant?.address || ""
+              address: item.restaurant?.address || "",
+              ownerId: item.restaurant?.owner_id
             },
             video: item.video_url || "",
             thumbnail: item.thumbnail_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",
@@ -461,7 +462,7 @@ export default function ReelsPage() {
             >
               <span>💬 Phản hồi</span>
             </button>
-            {user && (user.id === Number(comment.userId) || user.role === "admin") && (
+            {user && (user.id === Number(comment.userId) || user.id === Number(activeReel.restaurant?.ownerId) || user.role === "admin") && (
               <button
                 onClick={async () => {
                   if (!confirm("Bạn có chắc chắn muốn xóa bình luận này không?")) return;

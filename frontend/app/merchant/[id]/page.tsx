@@ -21,7 +21,8 @@ import {
   Plus, 
   Minus,
   Navigation,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -32,7 +33,10 @@ import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/header";
-import { getMerchant } from "@/lib/services/merchant";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { getMerchant, submitReview, deleteReview } from "@/lib/services/merchant";
+
 
 const mapRawMerchantToDetails = (data: any) => {
   const menus = data.menus || [];
@@ -56,6 +60,7 @@ const mapRawMerchantToDetails = (data: any) => {
     category: data.category || "",
     address: data.address || "Chưa cập nhật địa chỉ",
     description: data.description || "",
+    ownerId: data.owner_id,
     menuHighlights: mappedMenus.slice(0, 4),
     fullMenu: mappedMenus.slice(4),
     reviews: (data.reviews || []).map((r: any) => ({
@@ -64,7 +69,9 @@ const mapRawMerchantToDetails = (data: any) => {
       avatar: r.customerAvatar || undefined,
       rating: r.rating,
       comment: r.comment,
-      date: r.date.split("T")[0]
+      date: r.date.split("T")[0],
+      response: r.response || undefined,
+      reviewerId: r.reviewerId
     })),
     promotions: (data.campaigns || []).map((c: any) => ({
       id: String(c.id),
@@ -75,6 +82,8 @@ const mapRawMerchantToDetails = (data: any) => {
 };
 
 export default function MerchantPage() {
+  const { token, user } = useAuth();
+  const { toast } = useToast();
   const [isFullMenuOpen, setIsFullMenuOpen] = useState(false);
   const params = useParams();
   const { id } = params as { id: string };
@@ -82,6 +91,92 @@ export default function MerchantPage() {
   const [merchant, setMerchant] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isDeletingReviewId, setIsDeletingReviewId] = useState<number | null>(null);
+
+  const handleReviewDelete = async (reviewId: number) => {
+    if (!token) return;
+    
+    if (!confirm("Bạn có chắc chắn muốn xóa đánh giá này không?")) {
+      return;
+    }
+
+    setIsDeletingReviewId(reviewId);
+    try {
+      await deleteReview(reviewId, token);
+      toast({
+        title: "Đã xóa đánh giá thành công! 🗑️",
+        description: "Đánh giá đã được gỡ bỏ khỏi quán ăn.",
+      });
+
+      // Reload data to reflect deletion
+      const updatedData = await getMerchant(Number(id));
+      setMerchant(mapRawMerchantToDetails(updatedData));
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Lỗi xóa đánh giá 🙁",
+        description: err.message || "Không thể xóa đánh giá. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingReviewId(null);
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewError(null);
+    if (!token) {
+      toast({
+        title: "Yêu cầu đăng nhập 🔒",
+        description: "Vui lòng đăng nhập để gửi đánh giá của bạn.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newComment.trim()) {
+      setReviewError("Vui lòng nhập nội dung đánh giá.");
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      await submitReview(Number(id), token, {
+        rating: newRating,
+        comment: newComment,
+      });
+
+      toast({
+        title: "Đã gửi đánh giá thành công! 🎉",
+        description: "Cảm ơn bạn đã đóng góp ý kiến chia sẻ trải nghiệm.",
+        variant: "default",
+      });
+
+      // Reload data to reflect the new review
+      const updatedData = await getMerchant(Number(id));
+      setMerchant(mapRawMerchantToDetails(updatedData));
+      
+      // Reset form state
+      setNewComment("");
+      setNewRating(5);
+    } catch (err: any) {
+      console.error(err);
+      setReviewError(err.message || "Gửi đánh giá thất bại.");
+      toast({
+        title: "Lỗi gửi đánh giá 🙁",
+        description: err.message || "Không thể lưu đánh giá của bạn. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -332,41 +427,154 @@ export default function MerchantPage() {
 
 
             {/* Customer Reviews / Testimonials Section */}
-            {merchant.reviews.length > 0 && (
-              <section className="py-12 animate-slide-up-slow">
-                <Badge className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full uppercase tracking-[0.2em] font-medium mb-4">
-                  Đánh giá
-                </Badge>
-                <h2 className="text-3xl font-extrabold tracking-tight mb-8">Khách hàng nói gì về chúng tôi</h2>
+            <section className="py-12 animate-slide-up-slow">
+              <Badge className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full uppercase tracking-[0.2em] font-medium mb-4">
+                Đánh giá
+              </Badge>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <h2 className="text-3xl font-extrabold tracking-tight">Khách hàng nói gì về chúng tôi</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Cảm nhận và chia sẻ thực tế từ cộng đồng ẩm thực</p>
+                </div>
+              </div>
+
+              {/* Form Viết đánh giá mới */}
+              {token ? (
+                <Card className="p-6 bg-gradient-to-br from-secondary/30 via-secondary/15 to-transparent border border-border/80 rounded-3xl mb-10 shadow-md">
+                  <h3 className="font-extrabold text-lg text-foreground mb-4">Viết đánh giá của bạn</h3>
+                  <form onSubmit={handleReviewSubmit} className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground font-medium mr-2">Xếp hạng:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setNewRating(star)}
+                            className="hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                          >
+                            <Star
+                              className={cn(
+                                "w-6 h-6 transition-colors",
+                                star <= newRating 
+                                  ? "fill-amber-400 text-amber-400" 
+                                  : "text-muted-foreground/45 hover:text-amber-300"
+                              )}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground font-semibold ml-2">
+                        {newRating === 5 ? "Rất tốt" : newRating === 4 ? "Tốt" : newRating === 3 ? "Bình thường" : newRating === 2 ? "Không ngon" : "Rất tệ"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Hãy chia sẻ trải nghiệm của bạn về món ăn, không gian, và cách phục vụ tại đây..."
+                        rows={4}
+                        className="w-full rounded-2xl p-4 text-sm bg-card border border-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-muted-foreground/60 resize-none font-medium"
+                      />
+                    </div>
+
+                    {reviewError && (
+                      <p className="text-xs text-destructive font-semibold">{reviewError}</p>
+                    )}
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={isSubmittingReview}
+                        className="rounded-full px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-all shadow-md active:scale-95 flex items-center gap-2"
+                      >
+                        {isSubmittingReview ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Đang gửi...
+                          </>
+                        ) : (
+                          "Gửi đánh giá"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+              ) : (
+                <div className="p-6 bg-secondary/10 border border-dashed border-border rounded-3xl mb-10 text-center">
+                  <p className="text-sm font-medium text-foreground">Bạn muốn viết đánh giá?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-4">Vui lòng đăng nhập tài khoản để gửi ý kiến phản hồi.</p>
+                  <Link href="/login">
+                    <Button variant="outline" className="rounded-full px-5 text-xs font-bold border-primary text-primary hover:bg-primary/5">
+                      Đăng nhập để đánh giá
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {/* Danh sách đánh giá */}
+              {merchant.reviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-2xl bg-secondary/5 shadow-inner">
+                  <MessageCircle className="w-8 h-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-foreground">Chưa có đánh giá nào</p>
+                  <p className="text-xs text-muted-foreground mt-1">Hãy là người đầu tiên chia sẻ cảm nhận về quán ăn này!</p>
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {merchant.reviews.map((review: any) => (
                     <Card key={review.id} className="p-1.5 bg-white/5 dark:bg-black/15 border border-white/10 dark:border-white/5 rounded-2xl shadow-lg backdrop-blur-sm">
                       <div className="p-4 rounded-[calc(1rem-2px)] bg-card/65 dark:bg-card/45 shadow-inner flex flex-col h-full">
-                        <div className="flex items-center gap-3 mb-4">
-                          <Avatar className="w-10 h-10 ring-2 ring-primary/10">
-                            {review.avatar ? <AvatarImage src={review.avatar} alt={review.user} /> : null}
-                            <AvatarFallback>{review.user?.[0] || '?'}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-extrabold text-sm text-foreground">{review.user}</h3>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              {[...Array(review.rating)].map((_: any, i: number) => (
-                                <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                              ))}
-                              {[...Array(5 - review.rating)].map((_: any, i: number) => (
-                                <Star key={i} className="w-3.5 h-3.5 text-muted-foreground" />
-                              ))}
-                              <span className="ml-2">{review.date}</span>
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-10 h-10 ring-2 ring-primary/10">
+                              {review.avatar ? <AvatarImage src={review.avatar} alt={review.user} /> : null}
+                              <AvatarFallback>{review.user?.[0] || '?'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-extrabold text-sm text-foreground">{review.user}</h3>
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                {[...Array(review.rating)].map((_: any, i: number) => (
+                                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                ))}
+                                {[...Array(5 - review.rating)].map((_: any, i: number) => (
+                                  <Star key={i} className="w-3.5 h-3.5 text-muted-foreground" />
+                                ))}
+                                <span className="ml-2">{review.date}</span>
+                              </div>
                             </div>
                           </div>
+
+                          {/* Nút xóa đánh giá (Chủ quán, tác giả hoặc Admin) */}
+                          {user && (user.id === Number(review.reviewerId) || user.id === Number(merchant.ownerId) || user.role === 'admin') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleReviewDelete(Number(review.id))}
+                              disabled={isDeletingReviewId === Number(review.id)}
+                              className="w-8 h-8 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0 cursor-pointer"
+                            >
+                              {isDeletingReviewId === Number(review.id) ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                         <p className="text-sm italic leading-relaxed text-foreground flex-grow">"{review.comment}"</p>
+                        {review.response && (
+                          <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/10 space-y-1">
+                            <p className="text-[10px] font-extrabold text-primary uppercase tracking-wider">Phản hồi từ chủ quán:</p>
+                            <p className="text-xs text-foreground leading-relaxed italic">"{review.response}"</p>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   ))}
                 </div>
-              </section>
-            )}
+              )}
+            </section>
 
           </div>
 

@@ -341,6 +341,7 @@ export interface ReviewResponse {
   comment: string;
   date: string;
   response: string | null;
+  reviewerId: number;
 }
 
 export async function getCampaigns(merchantId: number, token: string): Promise<CampaignResponse[]> {
@@ -481,6 +482,67 @@ export async function deleteMerchant(merchantId: number, token: string): Promise
 
   if (!response.ok) {
     await handleResponseError(response, "Lỗi khi xóa quán ăn.");
+  }
+
+  return response.json();
+}
+
+export interface ReviewCreatePayload {
+  rating: number;
+  comment: string;
+}
+
+export async function submitReview(
+  merchantId: number,
+  token: string,
+  payload: ReviewCreatePayload
+): Promise<any> {
+  validateId(merchantId, "nhà hàng");
+  if (payload.rating < 1 || payload.rating > 5) {
+    throw new Error("Điểm đánh giá phải từ 1 đến 5 sao.");
+  }
+  if (!payload.comment || payload.comment.trim() === "") {
+    throw new Error("Nội dung đánh giá không được để trống.");
+  }
+
+  const response = await fetch("/api/content/videos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      title: "Đánh giá từ khách hàng",
+      video_url: "",
+      description: payload.comment.trim(),
+      tagged_merchant_id: merchantId,
+      post_type: "review",
+      rating: payload.rating,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleResponseError(response, "Không thể gửi đánh giá.");
+  }
+
+  return response.json();
+}
+
+export async function deleteReview(
+  reviewId: number,
+  token: string
+): Promise<any> {
+  validateId(reviewId, "đánh giá");
+  const response = await fetch(`/api/content/videos/${reviewId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    await handleResponseError(response, "Lỗi khi xóa đánh giá.");
   }
 
   return response.json();

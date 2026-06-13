@@ -226,18 +226,26 @@ def geo_search_merchants(
 def delete_comment(db: Session, comment_id: int, current_user) -> dict:
     """
     Xóa bình luận cùng toàn bộ replies con và likes đi kèm.
-    Chỉ cho phép tác giả bình luận hoặc Admin xóa.
+    Chỉ cho phép tác giả bình luận, chủ quán của video được tag, hoặc Admin xóa.
     """
-    # 1. Tìm comment
-    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    # 1. Tìm comment cùng thông tin video và nhà hàng được gắn thẻ
+    from sqlalchemy.orm import joinedload
+    comment = db.query(Comment).options(
+        joinedload(Comment.video).joinedload(Video.tagged_merchant)
+    ).filter(Comment.id == comment_id).first()
     if not comment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Bình luận không tồn tại."
         )
 
-    # 2. Kiểm tra quyền sở hữu (chính chủ hoặc admin)
-    if comment.user_id != current_user.id and current_user.role != "admin":
+    # Kiểm tra xem người dùng hiện tại có phải là chủ sở hữu của nhà hàng được gắn thẻ trong bài viết hay không
+    is_merchant_owner = False
+    if comment.video and comment.video.tagged_merchant and comment.video.tagged_merchant.owner_id == current_user.id:
+        is_merchant_owner = True
+
+    # 2. Kiểm tra quyền sở hữu (chính chủ comment, chủ nhà hàng được tag, hoặc admin)
+    if comment.user_id != current_user.id and not is_merchant_owner and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền xóa bình luận này."

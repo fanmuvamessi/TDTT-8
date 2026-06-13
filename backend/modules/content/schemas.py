@@ -19,6 +19,7 @@ class VideoCreate(BaseModel):
     description: Optional[str] = None
     tagged_merchant_id: Optional[int] = None
     post_type: Optional[str] = "video"
+    rating: Optional[int] = 5
 
 class VideoUserResponse(BaseModel):
     id: int
@@ -36,6 +37,7 @@ class VideoMerchantResponse(BaseModel):
     address: Optional[str] = None
     latitude: float
     longitude: float
+    owner_id: int
 
     class Config:
         from_attributes = True
@@ -111,7 +113,8 @@ class VideoResponse(BaseModel):
                 "name": merchant.name,
                 "address": merchant.address or "",
                 "latitude": merchant.latitude,
-                "longitude": merchant.longitude
+                "longitude": merchant.longitude,
+                "owner_id": merchant.owner_id
             }
         else:
             obj_dict["restaurant"] = None

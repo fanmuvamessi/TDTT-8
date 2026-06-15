@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Grid3X3, Bookmark, Heart, MapPin, Home, Share2, LogOut, Loader2, Play, Eye, Plus, Sparkles, ChevronRight } from "lucide-react";
+import { Settings, Grid3X3, Bookmark, Heart, MapPin, Home, Share2, LogOut, Loader2, Play, Eye, Plus, Sparkles, ChevronRight, LayoutDashboard } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -269,6 +269,21 @@ export default function ProfilePage() {
                     <p className="text-[9px] md:text-[10px] text-muted-foreground/80 font-bold uppercase tracking-wider mt-0.5 md:mt-1.5 leading-none">Merchant</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/60 ml-auto hidden md:block group-hover:text-blue-500 transition-colors" />
+                </div>
+              </Link>
+            )}
+
+            {user?.role === "admin" && (
+              <Link href="/admin" className="block w-full">
+                <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/10 hover:border-indigo-500/30 rounded-3xl p-3 md:p-4 text-center md:text-left flex flex-col md:flex-row md:items-center md:gap-4.5 transition-all duration-500 hover:scale-[1.02] cursor-pointer group shadow-xs">
+                  <div className="w-10 h-10 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto md:mx-0 group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex-shrink-0">
+                    <LayoutDashboard className="w-5 h-5 fill-none" />
+                  </div>
+                  <div>
+                    <p className="font-black text-base md:text-lg text-foreground mt-1 md:mt-0 leading-none">Dashboard</p>
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground/80 font-bold uppercase tracking-wider mt-0.5 md:mt-1.5 leading-none">Admin</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/60 ml-auto hidden md:block group-hover:text-indigo-500 transition-colors" />
                 </div>
               </Link>
             )}

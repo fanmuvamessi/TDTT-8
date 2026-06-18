@@ -107,6 +107,7 @@ class Video(Base):
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     tagged_merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True, index=True)
     reup_from_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True) # ID bài viết gốc nếu là reup
+    meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     # Relationships

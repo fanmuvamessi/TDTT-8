@@ -79,9 +79,20 @@ def patch_user_role(db: Session, user_id: int, role: str) -> Optional[User]:
 def patch_user_disable(db: Session, user_id: int, disabled: bool) -> Optional[User]:
     user = db.query(User).filter(User.id == user_id).first()
     if user:
-        if user.meta_data is None:
-            user.meta_data = {}
-        user.meta_data["disabled"] = disabled
+        # Re-assign dictionary to trigger SQLAlchemy's change detection for JSON columns
+        meta = dict(user.meta_data) if user.meta_data is not None else {}
+        meta["disabled"] = disabled
+        user.meta_data = meta
+        
+        # Synchronize with Firebase Auth if possible
+        if user.firebase_uid and not user.firebase_uid.startswith("g_"):
+            try:
+                from firebase_admin import auth
+                auth.update_user(user.firebase_uid, disabled=disabled)
+                print(f"[ADMIN] Đã đồng bộ trạng thái disabled={disabled} lên Firebase Auth cho UID: {user.firebase_uid}")
+            except Exception as e:
+                print(f"[ADMIN] Cảnh báo: Không thể cập nhật trạng thái disabled lên Firebase Auth: {e}")
+
         db.commit()
         db.refresh(user)
     return user

@@ -223,14 +223,12 @@ class TestMerchantServices(BaseMerchantTest):
         self.db.commit()
         
         # Xem stats
-        fetched_merchant, clicks, impressions = services.get_stats(self.db, db_merchant.id)
-        self.assertEqual(fetched_merchant.id, db_merchant.id)
+        clicks, impressions, rating_avg, total_reviews, active_promos = services.get_stats(self.db, db_merchant.id)
         self.assertEqual(clicks, 12)
         self.assertEqual(impressions, 100)
         
         # Thử với ID không tồn tại
-        none_m, clicks, impressions = services.get_stats(self.db, 9999)
-        self.assertIsNone(none_m)
+        clicks, impressions, rating_avg, total_reviews, active_promos = services.get_stats(self.db, 9999)
         self.assertEqual(clicks, 0)
         self.assertEqual(impressions, 0)
 

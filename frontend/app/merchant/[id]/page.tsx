@@ -17,7 +17,8 @@ import {
   Minus,
   Navigation,
   Loader2,
-  Trash2
+  Trash2,
+  Flag // New import
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -30,6 +31,7 @@ import { Header } from "@/components/header";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getMerchant, submitReview, deleteReview } from "@/lib/services/merchant";
+import ReportModal from "@/components/reports/ReportModal"; // New import
 
 const mapRawMerchantToDetails = (data: any) => {
   const menus = data.menus || [];
@@ -96,6 +98,11 @@ export default function MerchantPage() {
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
+  // New states for ReportModal
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportedEntityType, setReportedEntityType] = useState<'user' | 'merchant' | 'post' | 'reel'>('merchant');
+  const [reportedEntityId, setReportedEntityId] = useState<string>('');
+
   useEffect(() => {
     return () => {
       if (selectedImagePreview) {
@@ -103,6 +110,16 @@ export default function MerchantPage() {
       }
     };
   }, [selectedImagePreview]);
+
+  const handleOpenReportModal = (entityType: 'user' | 'merchant' | 'post' | 'reel', entityId: string) => {
+    setReportedEntityType(entityType);
+    setReportedEntityId(entityId);
+    setShowReportModal(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+  };
 
   const handleReviewDelete = async (reviewId: number) => {
     if (!token) return;
@@ -339,6 +356,19 @@ export default function MerchantPage() {
                   <Navigation className="w-3.5 h-3.5 fill-white text-white" strokeWidth={1.5} />
                 </span>
               </Button>
+
+              {user && user.id !== merchant.ownerId && (
+                <Button
+                  onClick={() => handleOpenReportModal("merchant", merchant.id)}
+                  variant="outline"
+                  className="px-6 py-3 h-12 rounded-full text-sm font-bold border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-600 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group flex items-center shadow-md"
+                >
+                  <span>Báo cáo quán ăn</span>
+                  <span className="ml-2.5 w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center group-hover:translate-x-1 group-hover:-translate-y-[1px] group-hover:scale-105 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-sm">
+                    <Flag className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  </span>
+                </Button>
+              )}
 
               <div className="flex items-center gap-2 px-5 py-3 h-12 rounded-full text-sm font-black bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 text-white shadow-sm transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/20 select-none">
                 <Star className="w-4.5 h-4.5 text-amber-400 fill-amber-400" strokeWidth={1.5} />
@@ -792,6 +822,12 @@ export default function MerchantPage() {
           </div>
         </div>
       )}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={handleCloseReportModal}
+        reportedEntityType={reportedEntityType}
+        reportedEntityId={reportedEntityId}
+      />
     </div>
   );
 }

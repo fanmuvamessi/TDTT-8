@@ -18,6 +18,7 @@ import {
   LogOut,
   ShieldCheck,
   Menu,
+  AlertCircle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ const navItems = [
   { name: "Quán ăn", href: "/admin/merchants", icon: Store },
   { name: "Kiểm duyệt Video", href: "/admin/videos", icon: Video },
   { name: "Quảng cáo", href: "/admin/campaigns", icon: Megaphone },
+  { name: "Báo cáo", href: "/admin/reports", icon: AlertCircle },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {

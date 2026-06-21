@@ -2,7 +2,7 @@
  
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical, Volume2, VolumeX, Trash2, EyeOff, Copy } from "lucide-react";
+import { Heart, MessageCircle, Share2, Music2, Play, Pause, MapPin, MoreVertical, Volume2, VolumeX, Trash2, EyeOff, Copy, Flag } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,14 @@ import { cn, copyToClipboard } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { LoginRequiredDialog } from "@/components/login-required-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import ReportModal from "@/components/reports/ReportModal";
 
 interface ReelCardProps {
   reel: {
@@ -56,6 +64,11 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
   const { token, user } = useAuth();
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportedEntityType, setReportedEntityType] = useState<
+    "user" | "merchant" | "post" | "reel"
+  >("reel");
+  const [reportedEntityId, setReportedEntityId] = useState<string>("");
   const [isLiked, setIsLiked] = useState(reel.isLiked || false);
   const [likes, setLikes] = useState(reel.likes);
   const [isPlaying, setIsPlaying] = useState(isActive);
@@ -78,6 +91,16 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
     }
     action();
   }, [token]);
+
+  const handleOpenReportModal = (entityType: "user" | "merchant" | "post" | "reel", entityId: string) => {
+    setReportedEntityType(entityType);
+    setReportedEntityId(entityId);
+    setShowReportModal(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+  };
 
   // Sync play/pause with isActive and isPlaying states
   useEffect(() => {
@@ -469,57 +492,53 @@ export function ReelCard({ reel, isActive, onCommentClick, isCommentsOpen = fals
 
           {/* More Menu (Hide/Delete) */}
           {user && (
-            <div className="relative">
-              <button 
-                onClick={() => setShowMenu(!showMenu)}
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
-                  showMenu 
-                    ? "bg-orange-500/20 border border-orange-500/50 text-orange-500 scale-105" 
-                    : "bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer shadow-lg backdrop-blur-md",
+                    "bg-white/15 border border-white/20 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white md:bg-neutral-100 md:border-neutral-200/85 md:text-neutral-700 md:hover:bg-orange-500 md:hover:border-orange-500 md:hover:text-white dark:md:bg-white/10 dark:md:border-white/10 dark:md:text-white dark:md:hover:bg-orange-500 dark:md:hover:border-orange-500"
+                  )}
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => handleHidePost()}>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  <span>Ẩn bài viết</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => handleCopyLinkShare(e)}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  <span>Sao chép liên kết</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleOpenReportModal("reel", reel.id)} className="text-red-500">
+                  <Flag className="mr-2 h-4 w-4" />
+                  <span>Báo cáo Reels</span>
+                </DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDeleteReel()} className="text-red-500">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span>Xóa bài viết</span>
+                    </DropdownMenuItem>
+                  </>
                 )}
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-              
-              {showMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-30" 
-                    onClick={() => setShowMenu(false)}
-                  />
-                  <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-36 bg-card border border-border/80 rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in slide-in-from-bottom-1 md:slide-in-from-top-1 duration-150 space-y-1">
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleHidePost();
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>Ẩn bài viết</span>
-                    </button>
-                    {canDelete && (
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          handleDeleteReel();
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa bài viết</span>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
       </div>
       <LoginRequiredDialog isOpen={showLoginDialog} onClose={() => setShowLoginDialog(false)} />
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={handleCloseReportModal}
+        reportedEntityType={reportedEntityType}
+        reportedEntityId={reportedEntityId}
+      />
     </div>
   );
 }

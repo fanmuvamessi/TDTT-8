@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Settings, Grid3X3, Heart, MapPin, Home, Share2, Loader2, Play, Eye, Plus, Sparkles, ChevronRight, UserPlus, UserCheck } from "lucide-react";
+import { Settings, Grid3X3, Heart, MapPin, Home, Share2, Loader2, Play, Eye, Plus, Sparkles, ChevronRight, UserPlus, UserCheck, Flag } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import ReportModal from "@/components/reports/ReportModal";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -24,6 +25,11 @@ export default function PublicProfilePage() {
   const [profileStats, setProfileStats] = useState<any>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isFollowPending, setIsFollowPending] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false); // New state
+  const [reportedEntityType, setReportedEntityType] = useState<
+    "user" | "merchant" | "post" | "reel"
+  >("user"); // New state
+  const [reportedEntityId, setReportedEntityId] = useState<string>(""); // New state
 
   // Redirect to own profile if it's the current user
   useEffect(() => {
@@ -130,6 +136,19 @@ export default function PublicProfilePage() {
     }
   };
 
+  const handleOpenReportModal = (
+    entityType: "user" | "merchant" | "post" | "reel",
+    entityId: string
+  ) => {
+    setReportedEntityType(entityType);
+    setReportedEntityId(entityId);
+    setShowReportModal(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+  };
+
   const handleShareProfile = () => {
     if (typeof window === "undefined") return;
     navigator.clipboard.writeText(window.location.href);
@@ -162,7 +181,7 @@ export default function PublicProfilePage() {
   }
 
   const displayName = profileStats.full_name || "Blogger ẩn danh";
-  const displayUsername = profileStats.email ? profileStats.email.split('@')[0] : `user_${profileStats.id}`;
+  const displayUsername = profileStats.email ? profileStats.email.split("@")[0] : `user_${profileStats.id}`;
   const displayAvatar = profileStats.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop";
   const displayBio = profileStats.bio || "Đam mê ẩm thực & Chia sẻ quán ngon";
 
@@ -284,9 +303,22 @@ export default function PublicProfilePage() {
                     <Share2 className="w-3.5 h-3.5 text-foreground/80" />
                   </div>
                 </button>
+
+                {!isMe && ( // Only show report button if not viewing own profile
+                  <button
+                    onClick={() => handleOpenReportModal("user", String(targetUserId))}
+                    className="w-full border border-border bg-card hover:bg-red-500/10 text-red-500 flex items-center justify-between rounded-full pl-6 pr-2.5 py-2.5 font-extrabold text-[11px] select-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-95 group cursor-pointer"
+                  >
+                    <span className="whitespace-nowrap">Báo cáo người dùng</span>
+                    <div className="w-6.5 h-6.5 bg-secondary dark:bg-white/10 rounded-full flex items-center justify-center transition-all duration-300 group-hover:rotate-12">
+                      <Flag className="w-3.5 h-3.5" />
+                    </div>
+                  </button>
+                )}
               </div>
 
             </div>
+
           </div>
 
           {/* Bento Grid Stats */}
@@ -299,7 +331,7 @@ export default function PublicProfilePage() {
               </div>
               <div>
                 <p className="font-black text-base md:text-lg text-foreground mt-1 md:mt-0 leading-none">{postsCount}</p>
-                <p className="text-[9px] md:text-[10px] text-muted-foreground/80 font-bold uppercase tracking-wider mt-0.5 md:mt-1.5 leading-none">Địa điểm</p>
+                <p className="text-[9px] md:text-[10px] text-muted-foreground/80 font-bold uppercase tracking-wider mt-0.5 md:mt-1.5 leading-none">Bài viết</p>
               </div>
             </div>
 
@@ -426,6 +458,12 @@ export default function PublicProfilePage() {
         </div>
 
       </main>
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={handleCloseReportModal}
+        reportedEntityType={reportedEntityType}
+        reportedEntityId={reportedEntityId}
+      />
     </div>
   );
 }

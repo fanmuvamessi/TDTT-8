@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal, Trash2, EyeOff, Copy } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, MapPin, Star, MoreHorizontal, Trash2, EyeOff, Copy, Flag } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { CaptionText } from "@/components/caption-text";
 import { LoginRequiredDialog } from "@/components/login-required-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import ReportModal from "@/components/reports/ReportModal";
 
 interface FoodPostProps {
   post: {
@@ -58,6 +66,9 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   const { token, user } = useAuth();
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportedEntityType, setReportedEntityType] = useState<'user' | 'merchant' | 'post' | 'reel'>('post');
+  const [reportedEntityId, setReportedEntityId] = useState<string>('');
   const [isSaved, setIsSaved] = useState(post.isSaved);
   const [isFollowing, setIsFollowing] = useState(post.user.is_following || false);
   const [shares, setShares] = useState(post.shares || 0);
@@ -75,6 +86,16 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
   useEffect(() => {
     setShares(post.shares || 0);
   }, [post.shares]);
+
+  const handleOpenReportModal = (entityType: 'user' | 'merchant' | 'post' | 'reel', entityId: string) => {
+    setReportedEntityType(entityType);
+    setReportedEntityId(entityId);
+    setShowReportModal(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+  };
 
   const handleHidePost = async () => {
     if (!token) {
@@ -346,49 +367,41 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
           </div>
           
           {user && (
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 h-9 w-9"
-                onClick={() => setShowMenu(!showMenu)}
-              >
-                <MoreHorizontal className="w-4 h-4 text-neutral-500" />
-              </Button>
-              
-              {showMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-30" 
-                    onClick={() => setShowMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-neutral-950 border border-neutral-200/60 dark:border-neutral-800/60 rounded-2xl shadow-xl py-1.5 z-40 animate-in fade-in slide-in-from-top-1 duration-150 space-y-1">
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleHidePost();
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-foreground hover:bg-secondary transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>Ẩn bài viết</span>
-                    </button>
-                    {canDelete && (
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          handleDeletePost();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors flex items-center gap-2 cursor-pointer border-t border-border/10 pt-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa bài viết</span>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 h-9 w-9"
+                >
+                  <MoreHorizontal className="w-4 h-4 text-neutral-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => handleHidePost()}>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  <span>Ẩn bài viết</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCopyLinkShare()}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  <span>Sao chép liên kết</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleOpenReportModal("post", post.id)} className="text-red-500">
+                  <Flag className="mr-2 h-4 w-4" />
+                  <span>Báo cáo bài viết</span>
+                </DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDeletePost()} className="text-red-500">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span>Xóa bài viết</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
@@ -502,5 +515,11 @@ export function FoodPost({ post, priority = false, onPostClick, onCommentClick, 
       </article>
     </div>
     <LoginRequiredDialog isOpen={showLoginDialog} onClose={() => setShowLoginDialog(false)} />
+    <ReportModal
+        isOpen={showReportModal}
+        onClose={handleCloseReportModal}
+        reportedEntityType={reportedEntityType}
+        reportedEntityId={reportedEntityId}
+    />
   </>);
 }

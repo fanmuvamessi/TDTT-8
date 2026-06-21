@@ -46,6 +46,24 @@ export interface AdminVideo {
   meta_data?: { reject_reason?: string } | null;
 }
 
+export interface Report {
+  id: string; // UUID
+  reporter_id: number;
+  reporter?: { full_name: string | null; avatar_url: string | null };
+  reported_entity_type: "user" | "merchant" | "post" | "reel";
+  reported_entity_id: string; // UUID
+  reported_entity?: { name?: string | null; title?: string | null; email?: string | null }; // For displaying in list
+  reason: string;
+  status: "pending" | "under_review" | "resolved" | "rejected";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedReports {
+  items: Report[];
+  total: number;
+}
+
 export interface AdminCampaign {
   id: number;
   title: string;
@@ -134,6 +152,33 @@ const MOCK_ADMIN_VIDEOS: AdminVideo[] = Array.from({ length: 25 }, (_, i) => ({
   tagged_merchant: { name: `Restaurant Name ${Math.floor(Math.random() * 30) + 1}` },
   created_at: new Date(Date.now() - (i * 86400000 * 0.5)).toISOString(),
   meta_data: i % 3 === 2 ? { reject_reason: "Content policy violation" } : null,
+}));
+
+const MOCK_ADMIN_REPORTS: Report[] = Array.from({ length: 30 }, (_, i) => ({
+  id: `report-${i + 1}`,
+  reporter_id: MOCK_ADMIN_USERS[i % MOCK_ADMIN_USERS.length].id,
+  reporter: MOCK_ADMIN_USERS[i % MOCK_ADMIN_USERS.length] ? { full_name: MOCK_ADMIN_USERS[i % MOCK_ADMIN_USERS.length].full_name, avatar_url: MOCK_ADMIN_USERS[i % MOCK_ADMIN_USERS.length].avatar_url } : undefined,
+  reported_entity_type: ["user", "merchant", "post", "reel"][i % 4] as "user" | "merchant" | "post" | "reel",
+  reported_entity_id: `entity-${i + 1}`,
+  reported_entity: (() => {
+    const type = ["user", "merchant", "post", "reel"][i % 4];
+    if (type === "user") return { email: `reported_user_${i + 1}@example.com` };
+    if (type === "merchant") return { name: `Reported Merchant ${i + 1}` };
+    if (type === "post") return { title: `Reported Post Title ${i + 1}` };
+    if (type === "reel") return { title: `Reported Reel Title ${i + 1}` };
+    return undefined;
+  })(),
+  reason: [
+    "Inappropriate content",
+    "Spam",
+    "Harassment",
+    "Misinformation",
+    "Other: Nudity or sexual content",
+    "Other: Hate speech",
+  ][i % 6],
+  status: ["pending", "under_review", "resolved", "rejected"][i % 4] as "pending" | "under_review" | "resolved" | "rejected",
+  created_at: new Date(Date.now() - (i * 3600000)).toISOString(), // Reports from the last 30 hours
+  updated_at: new Date(Date.now() - (i * 1800000)).toISOString(),
 }));
 
 const MOCK_ADMIN_CAMPAIGNS: AdminCampaign[] = Array.from({ length: 10 }, (_, i) => ({
@@ -411,3 +456,82 @@ export async function patchCampaignActive(token: string, campaignId: number, is_
   });
   return handleResponse<AdminCampaign>(res);
 }
+
+export async function getAdminReports(
+  token: string,
+  params: {
+    limit?: number;
+    offset?: number;
+    status?: "all" | "pending" | "under_review" | "resolved" | "rejected";
+    reported_entity_type?: "all" | "user" | "merchant" | "post" | "reel";
+  }
+): Promise<PaginatedReports> {
+  if (IS_MOCKING_ADMIN_DATA) {
+    let filteredReports = MOCK_ADMIN_REPORTS.map((report) => ({ ...report })); // Create a deep copy
+
+    if (params.status && params.status !== "all") {
+      filteredReports = filteredReports.filter(
+        (report) => report.status === params.status
+      );
+    }
+    if (
+      params.reported_entity_type &&
+      params.reported_entity_type !== "all"
+    ) {
+      filteredReports = filteredReports.filter(
+        (report) => report.reported_entity_type === params.reported_entity_type
+      );
+    }
+
+    // Sort by newest first
+    filteredReports.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const total = filteredReports.length;
+    const items = filteredReports.slice(
+      params.offset,
+      (params.offset || 0) + (params.limit || 10)
+    );
+
+    return Promise.resolve({ items, total });
+  }
+
+  const p = new URLSearchParams();
+  if (params.limit !== undefined) p.set("limit", String(params.limit));
+  if (params.offset !== undefined) p.set("offset", String(params.offset));
+  if (params.status && params.status !== "all") p.set("status", params.status);
+  if (
+    params.reported_entity_type &&
+    params.reported_entity_type !== "all"
+  ) {
+    p.set("reported_entity_type", params.reported_entity_type);
+  }
+
+  const res = await fetch(`${API_BASE}/admin/reports?${p}`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse<PaginatedReports>(res);
+}
+
+export async function patchReportStatus(
+  token: string,
+  reportId: string,
+  status: "under_review" | "resolved" | "rejected"
+): Promise<Report> {
+  if (IS_MOCKING_ADMIN_DATA) {
+    const report = MOCK_ADMIN_REPORTS.find((r) => r.id === reportId);
+    if (report) {
+      report.status = status;
+      report.updated_at = new Date().toISOString();
+      return Promise.resolve(report);
+    }
+    return Promise.reject(new Error("Report not found"));
+  }
+
+  const res = await fetch(`${API_BASE}/admin/reports/${reportId}/status`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse<Report>(res);
+}
+

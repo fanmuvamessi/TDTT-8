@@ -47,7 +47,7 @@ export default function AdminDashboardPage() {
       {error && (
         <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error} — dữ liệu hiển thị bên dưới là mock.</span>
+          <span>{error}</span>
         </div>
       )}
 

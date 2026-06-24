@@ -312,7 +312,7 @@ export default function LoginPage() {
           <p className="text-center mt-6 text-xs text-muted-foreground/80 font-semibold select-none">
             Chưa có tài khoản?{" "}
             <Link 
-              href={loginRole === "reviewer" ? "/register" : "/register?role=merchant"} 
+              href={loginRole === "reviewer" ? "/register" : "/register/merchant"} 
               className={cn(
                 "font-extrabold hover:underline transition-colors duration-500",
                 loginRole === "reviewer" ? "text-orange-500" : "text-blue-500"

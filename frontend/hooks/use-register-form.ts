@@ -54,7 +54,7 @@ export function useRegisterForm() {
     { label: "Chứa chữ số", met: /[0-9]/.test(formData.password) },
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, forceRole?: "reviewer" | "merchant") => {
     e.preventDefault();
     setError(null);
     setFieldErrors({});
@@ -111,7 +111,7 @@ export function useRegisterForm() {
 
     setIsLoading(true);
     try {
-      const role = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("role") || "reviewer" : "reviewer";
+      const role = forceRole || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("role") || "reviewer" : "reviewer");
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -165,7 +165,13 @@ export function useRegisterForm() {
 
       if (loginResponse.ok) {
         login(loginData.access_token, loginData.user, loginData.refresh_token);
-        router.push("/");
+        if (loginData.user?.role === "merchant") {
+          router.push("/merchant");
+        } else if (loginData.user?.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/");
+        }
       } else {
         router.push("/login");
       }

@@ -132,6 +132,39 @@ try:
 except Exception:
     pass
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE merchants ADD COLUMN image_url VARCHAR"))
+        print("[MIGRATION] Đã tự động thêm cột image_url vào bảng merchants.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE menus ADD COLUMN description TEXT"))
+        print("[MIGRATION] Đã tự động thêm cột description vào bảng menus.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE menus ADD COLUMN image_url VARCHAR"))
+        print("[MIGRATION] Đã tự động thêm cột image_url vào bảng menus.")
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        # SQLite and Postgres support json column types differently, try JSON then fallback to TEXT if needed.
+        try:
+            conn.execute(text("ALTER TABLE videos ADD COLUMN meta_data JSON"))
+        except Exception:
+            conn.execute(text("ALTER TABLE videos ADD COLUMN meta_data TEXT"))
+        print("[MIGRATION] Đã tự động thêm cột meta_data vào bảng videos.")
+except Exception:
+    pass
+
+
 app = FastAPI(
     title="Food Review API",
     description="Hệ thống Backend MVP cho mạng xã hội & Đánh giá ẩm thực Food Review",

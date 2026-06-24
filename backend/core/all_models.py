@@ -30,6 +30,8 @@ class User(Base):
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     comment_likes = relationship("CommentLike", back_populates="user", cascade="all, delete-orphan")
+    saved_posts = relationship("SavedPost", back_populates="user", cascade="all, delete-orphan")
+    reports = relationship("Report", back_populates="reporter", cascade="all, delete-orphan")
 
 
 class Merchant(Base):
@@ -226,4 +228,38 @@ class UserShare(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SavedPost(Base):
+    __tablename__ = "saved_posts"
+
+    __table_args__ = (
+        Index("idx_saved_posts_user_video", "user_id", "video_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="saved_posts")
+    video = relationship("Video")
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(String, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reported_entity_type = Column(String, nullable=False, index=True)
+    reported_entity_id = Column(String, nullable=False, index=True)
+    reason = Column(String, nullable=False)
+    status = Column(String, default="pending", nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    reporter = relationship("User", back_populates="reports")
+
 
